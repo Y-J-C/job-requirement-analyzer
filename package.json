@@ -1,0 +1,29 @@
+{
+  "name": "job-requirement-analyzer",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@11.16.0",
+  "scripts": {
+    "dev": "concurrently --names web,api --prefix-colors blue,green \"pnpm dev:web\" \"pnpm dev:api\"",
+    "dev:web": "pnpm --dir apps/web dev",
+    "dev:api": ".\\.venv\\Scripts\\python.exe -m uvicorn app.main:app --app-dir apps/api --reload --host 127.0.0.1 --port 8000",
+    "lint": "pnpm lint:web && pnpm lint:api",
+    "lint:web": "pnpm --dir apps/web lint",
+    "lint:api": ".\\.venv\\Scripts\\python.exe -m ruff check apps/api",
+    "test": "pnpm test:web && pnpm test:api",
+    "test:web": "pnpm --dir apps/web test",
+    "test:api": ".\\.venv\\Scripts\\python.exe -m pytest apps/api/tests",
+    "test:api:integration": "cross-env RUN_DATABASE_TESTS=1 .\\.venv\\Scripts\\python.exe -m pytest apps/api/tests/integration",
+    "build": "pnpm build:web && pnpm build:api",
+    "build:web": "pnpm --dir apps/web build",
+    "build:api": ".\\.venv\\Scripts\\python.exe -m compileall -q apps/api/app",
+    "db:up": "docker compose up -d postgres",
+    "db:down": "docker compose down",
+    "db:logs": "docker compose logs -f postgres",
+    "api:migrate": ".\\.venv\\Scripts\\python.exe -m alembic -c apps/api/alembic.ini upgrade head"
+  },
+  "devDependencies": {
+    "concurrently": "10.0.4",
+    "cross-env": "10.1.0"
+  }
+}

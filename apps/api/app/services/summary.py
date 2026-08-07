@@ -6,7 +6,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models.analysis_run import AnalysisRun
-from app.models.job_posting import JobPosting, JobPostingStatus
+from app.models.job_posting import JobPosting
 from app.models.requirement_item import (
     RequirementExplicitness,
     RequirementItem,
@@ -58,7 +58,7 @@ def build_target_role_summary(
         session.scalar(
             select(func.count())
             .select_from(JobPosting)
-            .where(job_condition, JobPosting.status == JobPostingStatus.CONFIRMED)
+            .where(job_condition, JobPosting.active_analysis_run_id.is_not(None))
         )
         or 0
     )
@@ -69,7 +69,7 @@ def build_target_role_summary(
         .join(JobPosting, JobPosting.id == AnalysisRun.job_posting_id)
         .where(
             JobPosting.target_role_id == target_role_id,
-            JobPosting.status == JobPostingStatus.CONFIRMED,
+            AnalysisRun.id == JobPosting.active_analysis_run_id,
             RequirementItem.user_confirmed.is_(True),
         )
     )

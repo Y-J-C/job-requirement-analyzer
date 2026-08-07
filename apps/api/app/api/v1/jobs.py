@@ -1,11 +1,12 @@
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Response, status
-from sqlalchemy.orm import Session, sessionmaker
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from sqlalchemy.orm import Session
 
 from app.ai.contracts import RequirementAnalyzer
 from app.ai.dependencies import get_requirement_analyzer
+from app.core.config import Settings, get_settings
 from app.core.database import get_session
 from app.schemas.analysis import AnalysisRunResponse
 from app.schemas.job_posting import (
@@ -13,7 +14,7 @@ from app.schemas.job_posting import (
     JobPostingListResponse,
     JobPostingResponse,
 )
-from app.services.analysis import create_ai_analysis_run, execute_ai_analysis
+from app.services.analysis import create_ai_analysis_run, get_latest_analysis_run
 from app.services.job_posting import (
     create_job_posting,
     delete_job_posting,
@@ -25,6 +26,7 @@ from app.services.target_role import get_target_role
 target_role_jobs_router = APIRouter(prefix="/target-roles", tags=["jobs"])
 jobs_router = APIRouter(prefix="/jobs", tags=["jobs"])
 SessionDependency = Annotated[Session, Depends(get_session)]
+SettingsDependency = Annotated[Settings, Depends(get_settings)]
 AnalyzerDependency = Annotated[RequirementAnalyzer, Depends(get_requirement_analyzer)]
 
 
@@ -80,30 +82,41 @@ def get_job_posting_endpoint(
 )
 def analyze_job_posting_endpoint(
     job_id: uuid.UUID,
-    background_tasks: BackgroundTasks,
     session: SessionDependency,
+    settings: SettingsDependency,
     analyzer: AnalyzerDependency,
 ) -> AnalysisRunResponse:
     job_posting = get_job_posting(session, job_id)
     if job_posting is None:
         raise HTTPException(status_code=404, detail="Job posting not found")
-    analysis_run = create_ai_analysis_run(session, job_posting, analyzer)
+    analysis_run = create_ai_analysis_run(
+        session,
+        job_posting,
+        model_provider=analyzer.provider_name,
+        model_name=analyzer.model_name,
+        max_attempts=settings.analysis_worker_max_attempts,
+    )
     if analysis_run is None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Job is already being analyzed or has review data",
         )
-    task_session_factory = sessionmaker(
-        bind=session.get_bind(),
-        autoflush=False,
-        expire_on_commit=False,
-    )
-    background_tasks.add_task(
-        execute_ai_analysis,
-        task_session_factory,
-        analysis_run.id,
-        analyzer,
-    )
+    return AnalysisRunResponse.model_validate(analysis_run)
+
+
+@jobs_router.get(
+    "/{job_id}/analysis-runs/latest",
+    response_model=AnalysisRunResponse,
+)
+def get_latest_analysis_run_endpoint(
+    job_id: uuid.UUID,
+    session: SessionDependency,
+) -> AnalysisRunResponse:
+    if get_job_posting(session, job_id) is None:
+        raise HTTPException(status_code=404, detail="Job posting not found")
+    analysis_run = get_latest_analysis_run(session, job_id)
+    if analysis_run is None:
+        raise HTTPException(status_code=404, detail="Analysis run not found")
     return AnalysisRunResponse.model_validate(analysis_run)
 
 

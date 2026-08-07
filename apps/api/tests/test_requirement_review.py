@@ -69,7 +69,7 @@ def test_create_and_list_manual_requirement(api_client: TestClient) -> None:
     assert listing.json()["job_status"] == "review_required"
 
 
-def test_confirm_and_edit_reopens_job_review(api_client: TestClient) -> None:
+def test_confirmed_requirements_are_read_only(api_client: TestClient) -> None:
     job = create_job(api_client)
     item = create_requirement(api_client, job["id"]).json()
 
@@ -85,14 +85,16 @@ def test_confirm_and_edit_reopens_job_review(api_client: TestClient) -> None:
         json={"normalized_name": "结构化查询语言"},
     )
 
-    assert update.status_code == 200
-    assert update.json()["normalized_name"] == "结构化查询语言"
-    assert update.json()["user_confirmed"] is False
-    reopened = api_client.get(f"/api/v1/jobs/{job['id']}/requirements").json()
-    assert reopened["job_status"] == "review_required"
+    assert update.status_code == 409
+    assert api_client.delete(f"/api/v1/requirements/{item['id']}").status_code == 409
+    assert create_requirement(api_client, job["id"]).status_code == 409
+    unchanged = api_client.get(f"/api/v1/jobs/{job['id']}/requirements").json()
+    assert unchanged["job_status"] == "confirmed"
+    assert unchanged["items"][0]["normalized_name"] == "SQL"
+    assert unchanged["items"][0]["user_confirmed"] is True
 
 
-def test_delete_last_requirement_returns_job_to_draft(api_client: TestClient) -> None:
+def test_delete_last_unconfirmed_requirement_returns_job_to_draft(api_client: TestClient) -> None:
     job = create_job(api_client)
     item = create_requirement(api_client, job["id"]).json()
     remaining_item = create_requirement(
@@ -102,10 +104,6 @@ def test_delete_last_requirement_returns_job_to_draft(api_client: TestClient) ->
         normalized_name="数据分析项目经验",
         requirement_type="preferred",
     ).json()
-    assert api_client.post(
-        f"/api/v1/jobs/{job['id']}/confirm-requirements"
-    ).status_code == 200
-
     deletion = api_client.delete(f"/api/v1/requirements/{item['id']}")
 
     assert deletion.status_code == 204

@@ -6,6 +6,7 @@ from app.ai.contracts import (
 )
 from app.ai.dependencies import get_requirement_analyzer
 from app.models.requirement_item import RequirementExplicitness, RequirementType
+from app.worker import run_once
 
 
 class FakeAnalyzer:
@@ -69,8 +70,16 @@ def test_analyze_job_saves_unconfirmed_ai_requirements(api_client) -> None:
     run_id = response.json()["id"]
     run = api_client.get(f"/api/v1/analysis-runs/{run_id}")
     assert run.status_code == 200
-    assert run.json()["status"] == "succeeded"
+    assert run.json()["status"] == "pending"
     assert run.json()["model_provider"] == "deepseek"
+
+    assert run_once(
+        api_client.app.state.testing_session_factory,
+        FakeAnalyzer(),
+        worker_id="test-worker",
+    )
+    run = api_client.get(f"/api/v1/analysis-runs/{run_id}")
+    assert run.json()["status"] == "succeeded"
 
     listing = api_client.get(f"/api/v1/jobs/{job['id']}/requirements")
     assert listing.status_code == 200
@@ -90,6 +99,12 @@ def test_analyze_job_rejects_reanalysis_while_review_is_pending(api_client) -> N
     first = api_client.post(f"/api/v1/jobs/{job['id']}/analyze")
     assert first.status_code == 202
 
+    assert run_once(
+        api_client.app.state.testing_session_factory,
+        FakeAnalyzer(),
+        worker_id="test-worker",
+    )
+
     # A succeeded run can be reviewed, but reanalysis is intentionally deferred in this slice.
     second = api_client.post(f"/api/v1/jobs/{job['id']}/analyze")
     assert second.status_code == 409
@@ -101,6 +116,12 @@ def test_failed_analysis_does_not_save_partial_requirements(api_client) -> None:
 
     response = api_client.post(f"/api/v1/jobs/{job['id']}/analyze")
     assert response.status_code == 202
+
+    assert run_once(
+        api_client.app.state.testing_session_factory,
+        FailingAnalyzer(),
+        worker_id="test-worker",
+    )
 
     run = api_client.get(f"/api/v1/analysis-runs/{response.json()['id']}").json()
     assert run["status"] == "failed"

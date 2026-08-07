@@ -13,6 +13,10 @@ from app.models.requirement_item import RequirementItem
 from app.schemas.requirement_item import RequirementItemCreate, RequirementItemUpdate
 
 
+class RequirementReviewConflict(Exception):
+    pass
+
+
 def get_manual_run(session: Session, job_id: uuid.UUID) -> AnalysisRun | None:
     return session.scalar(
         select(AnalysisRun)
@@ -40,6 +44,9 @@ def get_review_run(session: Session, job_id: uuid.UUID) -> AnalysisRun | None:
 def get_or_create_manual_run(session: Session, job_id: uuid.UUID) -> AnalysisRun:
     existing = get_review_run(session, job_id)
     if existing is not None:
+        job = session.get(JobPosting, job_id)
+        if job is not None and job.active_analysis_run_id == existing.id:
+            raise RequirementReviewConflict
         return existing
 
     latest_version = session.scalar(
@@ -61,6 +68,8 @@ def create_manual_requirement(
     job: JobPosting,
     payload: RequirementItemCreate,
 ) -> RequirementItem:
+    if job.status in {JobPostingStatus.QUEUED, JobPostingStatus.ANALYZING}:
+        raise RequirementReviewConflict
     analysis_run = get_or_create_manual_run(session, job.id)
     requirement = RequirementItem(
         analysis_run_id=analysis_run.id,
@@ -140,10 +149,12 @@ def update_requirement(
     requirement: RequirementItem,
     payload: RequirementItemUpdate,
 ) -> RequirementItem:
+    job = get_requirement_job(session, requirement)
+    if job.active_analysis_run_id == requirement.analysis_run_id:
+        raise RequirementReviewConflict
     for field_name in payload.model_fields_set:
         setattr(requirement, field_name, getattr(payload, field_name))
     requirement.user_modified = True
-    job = get_requirement_job(session, requirement)
     reopen_review(session, requirement.analysis_run_id, job)
     session.commit()
     session.refresh(requirement)
@@ -153,6 +164,8 @@ def update_requirement(
 def delete_requirement(session: Session, requirement: RequirementItem) -> None:
     analysis_run_id = requirement.analysis_run_id
     job = get_requirement_job(session, requirement)
+    if job.active_analysis_run_id == analysis_run_id:
+        raise RequirementReviewConflict
     session.delete(requirement)
     session.flush()
     remaining = (
@@ -171,6 +184,11 @@ def delete_requirement(session: Session, requirement: RequirementItem) -> None:
 
 
 def confirm_requirements(session: Session, job: JobPosting) -> bool:
+    locked_job = session.scalar(
+        select(JobPosting).where(JobPosting.id == job.id).with_for_update()
+    )
+    if locked_job is None or locked_job.status != JobPostingStatus.REVIEW_REQUIRED:
+        return False
     analysis_run = get_review_run(session, job.id)
     if analysis_run is None:
         return False
@@ -189,7 +207,13 @@ def confirm_requirements(session: Session, job: JobPosting) -> bool:
         .where(RequirementItem.analysis_run_id == analysis_run.id)
         .values(user_confirmed=True)
     )
-    job.status = JobPostingStatus.CONFIRMED
+    previous_run_id = locked_job.active_analysis_run_id
+    if previous_run_id is not None and previous_run_id != analysis_run.id:
+        previous_run = session.get(AnalysisRun, previous_run_id)
+        if previous_run is not None:
+            previous_run.status = AnalysisRunStatus.SUPERSEDED
+    locked_job.active_analysis_run_id = analysis_run.id
+    locked_job.status = JobPostingStatus.CONFIRMED
     session.commit()
-    session.refresh(job)
+    session.refresh(locked_job)
     return True

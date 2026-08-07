@@ -12,6 +12,7 @@ export type JobPostingStatus =
 
 export type JobPosting = {
   id: string;
+  active_analysis_run_id: string | null;
   target_role_id: string;
   company_name: string;
   job_title: string;
@@ -38,4 +39,3 @@ export type CreateJobPostingInput = {
   source_url: string | null;
   original_text: string;
 };
-

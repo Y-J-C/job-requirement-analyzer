@@ -7,19 +7,14 @@ from app.ai.deepseek import DeepSeekRequirementAnalyzer
 from app.core.config import Settings, get_settings
 
 
-def get_requirement_analyzer(
-    settings: Annotated[Settings, Depends(get_settings)],
-) -> RequirementAnalyzer:
+def build_requirement_analyzer(settings: Settings) -> RequirementAnalyzer:
     api_key = (
         settings.deepseek_api_key.get_secret_value()
         if settings.deepseek_api_key is not None
         else ""
     )
     if not api_key:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="AI provider is not configured",
-        )
+        raise RuntimeError("AI provider is not configured")
     return DeepSeekRequirementAnalyzer(
         api_key=api_key,
         base_url=settings.deepseek_base_url,
@@ -29,3 +24,15 @@ def get_requirement_analyzer(
         max_output_retries=settings.deepseek_max_output_retries,
         max_input_chars=settings.deepseek_max_input_chars,
     )
+
+
+def get_requirement_analyzer(
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> RequirementAnalyzer:
+    try:
+        return build_requirement_analyzer(settings)
+    except RuntimeError as error:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="AI provider is not configured",
+        ) from error

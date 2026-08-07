@@ -14,6 +14,7 @@ from app.schemas.requirement_item import (
 )
 from app.services.job_posting import get_job_posting
 from app.services.requirement_review import (
+    RequirementReviewConflict,
     confirm_requirements,
     create_manual_requirement,
     delete_requirement,
@@ -57,9 +58,14 @@ def create_requirement_endpoint(
     job = get_job_posting(session, job_id)
     if job is None:
         raise HTTPException(status_code=404, detail="Job posting not found")
-    return RequirementItemResponse.model_validate(
-        create_manual_requirement(session, job, payload)
-    )
+    try:
+        requirement = create_manual_requirement(session, job, payload)
+    except RequirementReviewConflict as error:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Requirements cannot be edited in the current job state",
+        ) from error
+    return RequirementItemResponse.model_validate(requirement)
 
 
 @requirements_router.get(
@@ -88,9 +94,14 @@ def update_requirement_endpoint(
     requirement = get_requirement(session, requirement_id)
     if requirement is None:
         raise HTTPException(status_code=404, detail="Requirement not found")
-    return RequirementItemResponse.model_validate(
-        update_requirement(session, requirement, payload)
-    )
+    try:
+        updated = update_requirement(session, requirement, payload)
+    except RequirementReviewConflict as error:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Requirements cannot be edited in the current job state",
+        ) from error
+    return RequirementItemResponse.model_validate(updated)
 
 
 @requirements_router.delete(
@@ -104,7 +115,13 @@ def delete_requirement_endpoint(
     requirement = get_requirement(session, requirement_id)
     if requirement is None:
         raise HTTPException(status_code=404, detail="Requirement not found")
-    delete_requirement(session, requirement)
+    try:
+        delete_requirement(session, requirement)
+    except RequirementReviewConflict as error:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Requirements cannot be edited in the current job state",
+        ) from error
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 

@@ -2,9 +2,9 @@
 
 将用户收集的招聘信息转换成可核验、可确认、可汇总的岗位准入条件。
 
-当前已完成第五阶段的核心闭环：可以创建目标岗位方向、录入招聘岗位、使用 DeepSeek 提取原子要求、人工审核确认，并按岗位去重查看覆盖率、分类筛选和回溯原文证据。
+当前已完成第六阶段：可以创建目标岗位方向、录入招聘岗位、通过独立 Worker 持久化执行 DeepSeek 提取、人工审核确认，并按岗位去重查看覆盖率、分类筛选和回溯原文证据。分析任务可跨 API 重启恢复，重新分析也不会在新版本确认前影响现有汇总。
 
-完整产品边界见 [README-岗位门槛分析系统.md](./README-岗位门槛分析系统.md)。本阶段 AI 契约和边界见 [docs/deepseek-analysis-slice-spec.md](./docs/deepseek-analysis-slice-spec.md)，其他已完成切片规格位于 [docs](./docs)。
+完整产品边界见 [README-岗位门槛分析系统.md](./README-岗位门槛分析系统.md)。AI 契约见 [docs/deepseek-analysis-slice-spec.md](./docs/deepseek-analysis-slice-spec.md)，持久化任务与版本切换见 [docs/durable-analysis-worker-spec.md](./docs/durable-analysis-worker-spec.md)，其他已完成切片规格位于 [docs](./docs)。
 
 ## 环境要求
 
@@ -54,6 +54,7 @@ pnpm dev
 ```powershell
 pnpm dev:web
 pnpm dev:api
+pnpm dev:worker
 ```
 
 ## 验证命令
@@ -93,7 +94,7 @@ docker-compose.yml        PostgreSQL 本地基础设施
 
 ## 当前范围
 
-当前已经包含工程基线、目标岗位方向、岗位原文录入、DeepSeek AI 提取、人工审核和已确认岗位汇总。以下内容将在后续里程碑实现：
+当前已经包含工程基线、目标岗位方向、岗位原文录入、DeepSeek AI 提取、持久化任务 Worker、人工审核、分析版本切换和已确认岗位汇总。以下内容将在后续里程碑实现：
 
-- 可跨进程恢复的独立任务队列和文件解析。
+- 文件上传与解析。
 - 登录和多用户能力。

@@ -11,6 +11,7 @@ import {
   createRequirement,
   deleteRequirement,
   fetchAnalysisRun,
+  fetchLatestAnalysisRun,
   fetchRequirements,
   startAnalysis,
   updateRequirement,
@@ -28,6 +29,7 @@ export function RequirementReviewDashboard({ jobId }: { jobId: string }) {
   const [actionError, setActionError] = useState<string | null>(null);
   const [analysisMessage, setAnalysisMessage] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisRunId, setAnalysisRunId] = useState<string | null>(null);
   const statusLabels: Record<JobPosting["status"], string> = {
     draft: "未开始",
     queued: "等待分析",
@@ -45,6 +47,16 @@ export function RequirementReviewDashboard({ jobId }: { jobId: string }) {
         if (isCurrent) {
           setJob({ ...loadedJob, status: listing.job_status });
           setItems(listing.items);
+          if (["queued", "analyzing"].includes(listing.job_status)) {
+            setIsAnalyzing(true);
+            void fetchLatestAnalysisRun(jobId)
+              .then((run) => {
+                if (isCurrent) setAnalysisRunId(run.id);
+              })
+              .catch(() => {
+                if (isCurrent) setActionError("无法恢复分析进度，请稍后刷新页面。");
+              });
+          }
         }
       })
       .catch(() => {
@@ -57,6 +69,53 @@ export function RequirementReviewDashboard({ jobId }: { jobId: string }) {
       isCurrent = false;
     };
   }, [jobId]);
+
+  useEffect(() => {
+    if (!analysisRunId) return;
+    const runId = analysisRunId;
+    let isCurrent = true;
+    async function poll() {
+      for (let attempt = 0; attempt < 80 && isCurrent; attempt += 1) {
+        const current = await fetchAnalysisRun(runId);
+        if (!isCurrent) return;
+        if (current.status === "succeeded") {
+          const [loadedJob, listing] = await Promise.all([
+            fetchJobPosting(jobId),
+            fetchRequirements(jobId),
+          ]);
+          if (!isCurrent) return;
+          setJob({ ...loadedJob, status: listing.job_status });
+          setItems(listing.items);
+          setAnalysisMessage("提取完成。请逐条核对后确认整份岗位。");
+          setAnalysisRunId(null);
+          setIsAnalyzing(false);
+          return;
+        }
+        if (current.status === "failed") {
+          setJob((value) => value ? { ...value, status: "failed" } : value);
+          setActionError("AI 提取失败，未写入不完整结果。请稍后重试。");
+          setAnalysisMessage(null);
+          setAnalysisRunId(null);
+          setIsAnalyzing(false);
+          return;
+        }
+        await new Promise((resolve) => window.setTimeout(resolve, 750));
+      }
+      if (isCurrent) {
+        setActionError("AI 分析仍在运行，请稍后刷新页面查看结果。");
+        setIsAnalyzing(false);
+      }
+    }
+    void poll().catch(() => {
+      if (isCurrent) {
+        setActionError("分析进度查询失败，请稍后刷新页面。");
+        setIsAnalyzing(false);
+      }
+    });
+    return () => {
+      isCurrent = false;
+    };
+  }, [analysisRunId, jobId]);
 
   async function handleCreate(input: RequirementInput) {
     const created = await createRequirement(jobId, input);
@@ -101,15 +160,6 @@ export function RequirementReviewDashboard({ jobId }: { jobId: string }) {
     }
   }
 
-  async function reloadReview() {
-    const [loadedJob, listing] = await Promise.all([
-      fetchJobPosting(jobId),
-      fetchRequirements(jobId),
-    ]);
-    setJob({ ...loadedJob, status: listing.job_status });
-    setItems(listing.items);
-  }
-
   async function handleAnalyze() {
     setActionError(null);
     setAnalysisMessage("DeepSeek 正在提取并核对原文依据…");
@@ -117,34 +167,22 @@ export function RequirementReviewDashboard({ jobId }: { jobId: string }) {
     setJob((current) => current ? { ...current, status: "queued" } : current);
     try {
       const started = await startAnalysis(jobId);
-      let current = started;
-      for (let attempt = 0; attempt < 80; attempt += 1) {
-        current = await fetchAnalysisRun(started.id);
-        if (current.status === "succeeded") {
-          await reloadReview();
-          setAnalysisMessage("提取完成。请逐条核对后确认整份岗位。");
-          return;
-        }
-        if (current.status === "failed") {
-          setJob((value) => value ? { ...value, status: "failed" } : value);
-          setActionError("AI 提取失败，未写入不完整结果。请稍后重试。");
-          setAnalysisMessage(null);
-          return;
-        }
-        await new Promise((resolve) => window.setTimeout(resolve, 750));
-      }
-      setActionError("AI 分析仍在运行，请稍后刷新页面查看结果。");
+      setAnalysisRunId(started.id);
     } catch {
       setJob((value) => value ? { ...value, status: "failed" } : value);
       setActionError("无法启动 AI 分析。请确认服务端已配置 DeepSeek 密钥。");
       setAnalysisMessage(null);
-    } finally {
       setIsAnalyzing(false);
     }
   }
 
   if (isLoading) return <main className="shell"><p aria-busy="true">正在加载审核数据…</p></main>;
   if (error || !job) return <main className="shell"><p role="alert">{error ?? "岗位不存在。"}</p></main>;
+  const isActiveVersion = job.active_analysis_run_id !== null
+    && items.length > 0
+    && items.every((item) => item.analysis_run_id === job.active_analysis_run_id);
+  const canEditRequirements = !isActiveVersion
+    && ["draft", "review_required", "failed"].includes(job.status);
 
   return (
     <main className="shell review-page">
@@ -179,29 +217,37 @@ export function RequirementReviewDashboard({ jobId }: { jobId: string }) {
               type="button"
               className="secondary-button"
               onClick={() => void handleAnalyze()}
-              disabled={isAnalyzing || !["draft", "failed"].includes(job.status)}
+              disabled={isAnalyzing || !["draft", "failed", "confirmed"].includes(job.status)}
             >
-              {isAnalyzing ? "正在分析…" : "使用 DeepSeek 提取门槛"}
+              {isAnalyzing ? "正在分析…" : job.active_analysis_run_id ? "使用 DeepSeek 重新分析" : "使用 DeepSeek 提取门槛"}
             </button>
           </section>
 
-          <section aria-labelledby="add-requirement-heading">
-            <h2 id="add-requirement-heading">新增原子要求</h2>
-            <RequirementForm onSubmit={handleCreate} />
-          </section>
+          {!canEditRequirements ? (
+            <p className="analysis-message">
+              {isActiveVersion
+                ? "当前为已生效版本。如需变更，请重新分析并确认新版本。"
+                : "分析任务进行中，完成后可编辑新版本。"}
+            </p>
+          ) : (
+            <section aria-labelledby="add-requirement-heading">
+              <h2 id="add-requirement-heading">新增原子要求</h2>
+              <RequirementForm onSubmit={handleCreate} />
+            </section>
+          )}
 
           <section aria-labelledby="requirement-list-heading">
             <div className="list-heading">
               <h2 id="requirement-list-heading">门槛清单</h2>
               <span>{items.length} 条</span>
             </div>
-            <RequirementList items={items} onUpdate={handleUpdate} onDelete={(item) => void handleDelete(item)} />
+            <RequirementList items={items} onUpdate={handleUpdate} onDelete={(item) => void handleDelete(item)} readOnly={!canEditRequirements} />
           </section>
 
           <div className="confirm-bar">
             <p>任何新增、编辑或删除都会使整份岗位重新进入待确认。</p>
-            <button type="button" onClick={() => void handleConfirm()} disabled={items.length === 0 || job.status === "confirmed"}>
-              {job.status === "confirmed" ? "整份岗位已确认" : "确认整份岗位"}
+            <button type="button" onClick={() => void handleConfirm()} disabled={items.length === 0 || job.status !== "review_required"}>
+              {isActiveVersion ? "当前版本已确认" : "确认整份岗位"}
             </button>
           </div>
         </div>

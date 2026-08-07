@@ -81,3 +81,11 @@ export async function fetchAnalysisRun(runId: string): Promise<AnalysisRun> {
   });
   return parseResponse<AnalysisRun>(response);
 }
+
+
+export async function fetchLatestAnalysisRun(jobId: string): Promise<AnalysisRun> {
+  const response = await fetch(`${apiBaseUrl}/api/v1/jobs/${jobId}/analysis-runs/latest`, {
+    cache: "no-store",
+  });
+  return parseResponse<AnalysisRun>(response);
+}

@@ -2,7 +2,16 @@ import uuid
 from datetime import datetime
 from enum import StrEnum
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Integer, String, UniqueConstraint
+from sqlalchemy import (
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    UniqueConstraint,
+    text,
+)
 from sqlalchemy import Enum as SqlEnum
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -32,6 +41,15 @@ class AnalysisRun(Base):
             name="analysis_run_status",
         ),
         CheckConstraint("source IN ('manual', 'ai')", name="analysis_run_source"),
+        CheckConstraint("attempt_count >= 0", name="analysis_run_attempt_count"),
+        CheckConstraint("max_attempts BETWEEN 1 AND 10", name="analysis_run_max_attempts"),
+        Index(
+            "uq_analysis_runs_one_active_task_per_job",
+            "job_posting_id",
+            unique=True,
+            sqlite_where=text("status IN ('pending', 'running')"),
+            postgresql_where=text("status IN ('pending', 'running')"),
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
@@ -67,6 +85,13 @@ class AnalysisRun(Base):
     prompt_version: Mapped[str | None] = mapped_column(String(50), nullable=True)
     schema_version: Mapped[str | None] = mapped_column(String(20), nullable=True)
     error_code: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    attempt_count: Mapped[int] = mapped_column(Integer, default=0)
+    max_attempts: Mapped[int] = mapped_column(Integer, default=3)
+    available_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    lease_expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    worker_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)

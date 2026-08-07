@@ -25,10 +25,12 @@ def api_client() -> Generator[TestClient, None, None]:
             yield session
 
     app.dependency_overrides[get_session] = override_session
+    app.state.testing_session_factory = testing_session
 
     with TestClient(app) as client:
         yield client
 
     app.dependency_overrides.clear()
+    del app.state.testing_session_factory
     Base.metadata.drop_all(engine)
     engine.dispose()

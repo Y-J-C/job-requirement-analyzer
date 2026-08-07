@@ -22,6 +22,7 @@ class JobPostingResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
+    active_analysis_run_id: uuid.UUID | None
     target_role_id: uuid.UUID
     company_name: str
     job_title: str

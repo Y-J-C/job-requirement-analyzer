@@ -36,6 +36,16 @@ class JobPosting(Base):
     )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    active_analysis_run_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey(
+            "analysis_runs.id",
+            name="job_postings_active_analysis_run_id_fkey",
+            use_alter=True,
+            ondelete="SET NULL",
+        ),
+        nullable=True,
+        index=True,
+    )
     target_role_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("target_roles.id", ondelete="CASCADE"),
         index=True,

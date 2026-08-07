@@ -15,10 +15,11 @@ type RequirementListProps = {
   items: RequirementItem[];
   onUpdate: (item: RequirementItem, input: RequirementInput) => Promise<void>;
   onDelete: (item: RequirementItem) => void;
+  readOnly?: boolean;
 };
 
 
-export function RequirementList({ items, onUpdate, onDelete }: RequirementListProps) {
+export function RequirementList({ items, onUpdate, onDelete, readOnly = false }: RequirementListProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
 
   if (items.length === 0) {
@@ -55,10 +56,12 @@ export function RequirementList({ items, onUpdate, onDelete }: RequirementListPr
                   </div>
                   <h3>{item.normalized_name}</h3>
                 </div>
-                <div className="inline-actions">
-                  <button type="button" className="secondary-button" aria-label={`编辑 ${item.normalized_name}`} onClick={() => setEditingId(item.id)}>编辑</button>
-                  <button type="button" className="danger-button" aria-label={`删除 ${item.normalized_name}`} onClick={() => onDelete(item)}>删除</button>
-                </div>
+                {readOnly ? null : (
+                  <div className="inline-actions">
+                    <button type="button" className="secondary-button" aria-label={`编辑 ${item.normalized_name}`} onClick={() => setEditingId(item.id)}>编辑</button>
+                    <button type="button" className="danger-button" aria-label={`删除 ${item.normalized_name}`} onClick={() => onDelete(item)}>删除</button>
+                  </div>
+                )}
               </header>
               <blockquote>{item.original_text}</blockquote>
             </article>

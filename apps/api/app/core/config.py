@@ -1,7 +1,8 @@
 from functools import lru_cache
+from typing import Self
 from urllib.parse import urlparse
 
-from pydantic import Field, SecretStr, field_validator
+from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -18,6 +19,10 @@ class Settings(BaseSettings):
     deepseek_timeout_seconds: float = Field(default=60, ge=5, le=120)
     deepseek_max_output_retries: int = Field(default=1, ge=0, le=2)
     deepseek_max_input_chars: int = Field(default=30_000, ge=1_000, le=100_000)
+    analysis_worker_poll_seconds: float = Field(default=1, ge=0.1, le=60)
+    analysis_worker_lease_seconds: int = Field(default=600, ge=30, le=3600)
+    analysis_worker_max_attempts: int = Field(default=3, ge=1, le=10)
+    analysis_worker_retry_delay_seconds: int = Field(default=5, ge=0, le=3600)
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -46,6 +51,15 @@ class Settings(BaseSettings):
         if value not in {"deepseek-v4-flash", "deepseek-v4-pro"}:
             raise ValueError("DeepSeek model must be a supported V4 model")
         return value
+
+    @model_validator(mode="after")
+    def validate_worker_lease_covers_provider_attempts(self) -> Self:
+        worst_case_seconds = self.deepseek_timeout_seconds * (
+            self.deepseek_max_output_retries + 1
+        )
+        if self.analysis_worker_lease_seconds <= worst_case_seconds + 30:
+            raise ValueError("Analysis worker lease must cover all provider attempts")
+        return self
 
 
 @lru_cache

@@ -48,6 +48,10 @@ export type AnalysisRun = {
   prompt_version: string | null;
   schema_version: string | null;
   error_code: string | null;
+  attempt_count: number;
+  max_attempts: number;
+  available_at: string;
+  lease_expires_at: string | null;
   started_at: string | null;
   completed_at: string | null;
   created_at: string;

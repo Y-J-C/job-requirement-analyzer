@@ -4,9 +4,11 @@
   "private": true,
   "packageManager": "pnpm@11.16.0",
   "scripts": {
-    "dev": "concurrently --names web,api --prefix-colors blue,green \"pnpm dev:web\" \"pnpm dev:api\"",
+    "dev": "concurrently --names web,api,worker --prefix-colors blue,green,yellow \"pnpm dev:web\" \"pnpm dev:api\" \"pnpm dev:worker\"",
     "dev:web": "pnpm --dir apps/web dev",
     "dev:api": ".\\.venv\\Scripts\\python.exe -m uvicorn app.main:app --app-dir apps/api --reload --host 127.0.0.1 --port 8000",
+    "dev:worker": ".\\.venv\\Scripts\\python.exe -m app.worker",
+    "worker:once": ".\\.venv\\Scripts\\python.exe -m app.worker --once",
     "lint": "pnpm lint:web && pnpm lint:api",
     "lint:web": "pnpm --dir apps/web lint",
     "lint:api": ".\\.venv\\Scripts\\python.exe -m ruff check apps/api",

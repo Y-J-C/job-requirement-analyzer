@@ -11,6 +11,7 @@ function jsonResponse(body: unknown, ok = true): Response {
 
 const job = {
   id: "f88812df-e516-4fb9-a0d0-69776d15b214",
+  active_analysis_run_id: null,
   target_role_id: "87c8a337-f85d-4d17-8dd4-da998636e3d7",
   company_name: "示例科技",
   job_title: "数据分析实习生",
@@ -63,6 +64,10 @@ describe("RequirementReviewDashboard", () => {
       prompt_version: "requirements-v1",
       schema_version: "1.0",
       error_code: null,
+      attempt_count: 0,
+      max_attempts: 3,
+      available_at: "2026-08-06T12:00:00Z",
+      lease_expires_at: null,
       started_at: null,
       completed_at: null,
       created_at: "2026-08-06T12:00:00Z",
@@ -151,10 +156,10 @@ describe("RequirementReviewDashboard", () => {
     expect(fetchMock).toHaveBeenCalledTimes(4);
   });
 
-  it("requires confirmation before deleting an item", async () => {
-    const confirmedRequirement = { ...requirement, user_confirmed: true };
+  it("requires confirmation before deleting an unconfirmed item", async () => {
+    const unconfirmedRequirement = { ...requirement, user_confirmed: false };
     const secondRequirement = {
-      ...confirmedRequirement,
+      ...unconfirmedRequirement,
       id: "c4fdd80f-509b-4fa4-b758-e0522f8d6f19",
       normalized_name: "数据分析项目经验",
       requirement_type: "preferred",
@@ -162,12 +167,12 @@ describe("RequirementReviewDashboard", () => {
     };
     const fetchMock = vi
       .fn()
-      .mockResolvedValueOnce(jsonResponse({ ...job, status: "confirmed" }))
+      .mockResolvedValueOnce(jsonResponse({ ...job, status: "review_required" }))
       .mockResolvedValueOnce(
         jsonResponse({
-          items: [confirmedRequirement, secondRequirement],
+          items: [unconfirmedRequirement, secondRequirement],
           total: 2,
-          job_status: "confirmed",
+          job_status: "review_required",
         }),
       )
       .mockResolvedValueOnce(jsonResponse(null));
@@ -187,5 +192,69 @@ describe("RequirementReviewDashboard", () => {
     expect(screen.queryByText("已确认")).toBeNull();
     expect(confirmMock).toHaveBeenCalledTimes(2);
     expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it("keeps the active confirmed version read-only", async () => {
+    const activeJob = {
+      ...job,
+      active_analysis_run_id: requirement.analysis_run_id,
+      status: "confirmed",
+    };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(activeJob))
+      .mockResolvedValueOnce(jsonResponse({
+        items: [{ ...requirement, user_confirmed: true }],
+        total: 1,
+        job_status: "confirmed",
+      }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<RequirementReviewDashboard jobId={job.id} />);
+
+    expect(await screen.findByText("当前为已生效版本。如需变更，请重新分析并确认新版本。")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "编辑 SQL" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "删除 SQL" })).toBeNull();
+    expect(screen.getByRole("button", { name: "使用 DeepSeek 重新分析" })).toBeTruthy();
+  });
+
+  it("recovers polling after refreshing a queued job", async () => {
+    const run = {
+      id: "77334d69-c46e-4dce-a42d-7d9a2dd58fb5",
+      job_posting_id: job.id,
+      version: 1,
+      status: "pending",
+      source: "ai",
+      model_provider: "deepseek",
+      model_name: "deepseek-v4-flash",
+      prompt_version: "requirements-v1",
+      schema_version: "1.0",
+      error_code: null,
+      attempt_count: 0,
+      max_attempts: 3,
+      available_at: "2026-08-06T12:00:00Z",
+      lease_expires_at: null,
+      started_at: null,
+      completed_at: null,
+      created_at: "2026-08-06T12:00:00Z",
+      updated_at: "2026-08-06T12:00:00Z",
+    };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ ...job, status: "queued" }))
+      .mockResolvedValueOnce(jsonResponse({ items: [], total: 0, job_status: "queued" }))
+      .mockResolvedValueOnce(jsonResponse(run))
+      .mockResolvedValueOnce(jsonResponse({ ...run, status: "succeeded" }))
+      .mockResolvedValueOnce(jsonResponse({ ...job, status: "review_required" }))
+      .mockResolvedValueOnce(jsonResponse({ items: [requirement], total: 1, job_status: "review_required" }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<RequirementReviewDashboard jobId={job.id} />);
+
+    expect(await screen.findByRole("heading", { name: "SQL" })).toBeTruthy();
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining(`/api/v1/jobs/${job.id}/analysis-runs/latest`),
+      expect.objectContaining({ cache: "no-store" }),
+    );
   });
 });

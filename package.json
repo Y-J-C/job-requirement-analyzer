@@ -5,6 +5,7 @@
   "packageManager": "pnpm@11.16.0",
   "scripts": {
     "dev": "concurrently --names web,api,worker --prefix-colors blue,green,yellow \"pnpm dev:web\" \"pnpm dev:api\" \"pnpm dev:worker\"",
+    "dev:e2e": "concurrently --kill-others-on-fail --names web,api,worker --prefix-colors blue,green,yellow \"pnpm dev:web\" \"pnpm dev:api\" \"pnpm dev:worker\"",
     "dev:web": "pnpm --dir apps/web dev",
     "dev:api": ".\\.venv\\Scripts\\python.exe -m uvicorn app.main:app --app-dir apps/api --reload --host 127.0.0.1 --port 8000",
     "dev:worker": ".\\.venv\\Scripts\\python.exe -m app.worker",
@@ -13,6 +14,8 @@
     "lint:web": "pnpm --dir apps/web lint",
     "lint:api": ".\\.venv\\Scripts\\python.exe -m ruff check apps/api",
     "test": "pnpm test:web && pnpm test:api",
+    "test:e2e": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test-e2e.ps1",
+    "test:e2e:deepseek": "cross-env RUN_DEEPSEEK_E2E=1 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test-e2e.ps1 --grep \"@deepseek\"",
     "test:web": "pnpm --dir apps/web test",
     "test:api": ".\\.venv\\Scripts\\python.exe -m pytest apps/api/tests",
     "test:api:integration": "cross-env RUN_DATABASE_TESTS=1 RUN_STORAGE_TESTS=1 .\\.venv\\Scripts\\python.exe -m pytest apps/api/tests/integration",
@@ -22,9 +25,11 @@
     "db:up": "docker compose up -d postgres minio",
     "db:down": "docker compose down",
     "db:logs": "docker compose logs -f postgres minio",
-    "api:migrate": ".\\.venv\\Scripts\\python.exe -m alembic -c apps/api/alembic.ini upgrade head"
+    "api:migrate": ".\\.venv\\Scripts\\python.exe -m alembic -c apps/api/alembic.ini upgrade head",
+    "verify": "pnpm lint && pnpm test && pnpm test:api:integration && pnpm build && pnpm test:e2e"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "concurrently": "10.0.4",
     "cross-env": "10.1.0"
   }

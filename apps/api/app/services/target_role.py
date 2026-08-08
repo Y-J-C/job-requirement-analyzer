@@ -4,8 +4,10 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models.job_posting import JobPosting
+from app.models.source_file import SourceFile
 from app.models.target_role import TargetRole
 from app.schemas.target_role import TargetRoleCreate
+from app.storage.contracts import ObjectStore
 
 
 def create_target_role(session: Session, payload: TargetRoleCreate) -> TargetRole:
@@ -55,3 +57,30 @@ def get_target_role_with_job_count(
         .where(TargetRole.id == role_id)
         .group_by(TargetRole.id)
     ).one_or_none()
+
+
+def delete_target_role(
+    session: Session,
+    target_role: TargetRole,
+    *,
+    store: ObjectStore,
+) -> None:
+    jobs = list(
+        session.scalars(
+            select(JobPosting).where(JobPosting.target_role_id == target_role.id)
+        )
+    )
+    job_ids = [job.id for job in jobs]
+    if job_ids:
+        object_keys = list(
+            session.scalars(
+                select(SourceFile.object_key).where(SourceFile.job_posting_id.in_(job_ids))
+            )
+        )
+        for object_key in object_keys:
+            store.delete(object_key)
+
+    for job in jobs:
+        session.delete(job)
+    session.delete(target_role)
+    session.commit()

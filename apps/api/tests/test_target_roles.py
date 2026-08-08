@@ -53,6 +53,15 @@ def test_get_unknown_target_role_returns_not_found(api_client: TestClient) -> No
     assert response.json() == {"detail": "Target role not found"}
 
 
+def test_delete_unknown_target_role_returns_not_found(api_client: TestClient) -> None:
+    response = api_client.delete(
+        "/api/v1/target-roles/00000000-0000-0000-0000-000000000000"
+    )
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Target role not found"}
+
+
 def test_create_target_role_rejects_blank_name(api_client: TestClient) -> None:
     response = create_target_role(api_client, name="   ")
 

@@ -2,7 +2,7 @@
 
 将用户收集的招聘信息转换成可核验、可确认、可汇总的岗位准入条件。
 
-当前已完成第七阶段：可以创建目标岗位方向，通过粘贴文本或上传 PDF、Markdown、DOCX 录入岗位；文件由 MinIO 保存并通过独立 Worker 持久化解析。解析完成后可手动启动 DeepSeek 提取、人工审核确认，并按岗位去重查看覆盖率、分类筛选和回溯原文证据。
+当前已完成第八阶段：可以创建目标岗位方向，通过粘贴文本或上传 PDF、Markdown、DOCX 录入岗位；文件由 MinIO 保存并通过独立 Worker 持久化解析。解析完成后可手动启动 DeepSeek 提取、人工审核确认，并按岗位去重查看覆盖率、分类筛选和回溯原文证据。核心文本、文件、审核、汇总和删除流程现已具备 Playwright 浏览器回归测试。
 
 完整产品边界见 [README-岗位门槛分析系统.md](./README-岗位门槛分析系统.md)。AI 契约见 [docs/deepseek-analysis-slice-spec.md](./docs/deepseek-analysis-slice-spec.md)，持久化任务与版本切换见 [docs/durable-analysis-worker-spec.md](./docs/durable-analysis-worker-spec.md)，其他已完成切片规格位于 [docs](./docs)。
 
@@ -18,6 +18,7 @@
 ```powershell
 Copy-Item .env.example .env
 pnpm install
+pnpm exec playwright install chromium
 py -3.12 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -e ".\apps\api[dev]"
 pnpm db:up
@@ -63,6 +64,7 @@ pnpm dev:worker
 pnpm lint
 pnpm test
 pnpm build
+pnpm test:e2e
 ```
 
 PostgreSQL 和 MinIO 运行后，可以执行真实连接与文件管线集成测试：
@@ -70,6 +72,20 @@ PostgreSQL 和 MinIO 运行后，可以执行真实连接与文件管线集成�
 ```powershell
 pnpm test:api:integration
 ```
+
+运行包含 lint、单元测试、真实 PostgreSQL/MinIO 集成测试、生产构建和默认浏览器测试的完整本地门禁：
+
+```powershell
+pnpm verify
+```
+
+`pnpm test:e2e` 会检查 Docker、执行迁移并启动所需应用进程。测试数据使用唯一前缀并在结束时清理；失败截图、视频和 Trace 位于被 Git 忽略的 `test-results/`。默认套件不会调用 DeepSeek。需要显式验证真实模型时，确认本地 `.env` 已配置有效密钥后运行：
+
+```powershell
+pnpm test:e2e:deepseek
+```
+
+该命令会产生一次最小真实模型调用，可能产生费用。
 
 常用数据库命令：
 
@@ -88,7 +104,9 @@ apps/
 └─ api/                   FastAPI 后端、测试和 Alembic
 packages/                 后续共享契约与 UI 包
 docs/                     工程规格和架构决策
-e2e/                      后续端到端测试
+e2e/                      Playwright 浏览器测试、固定样本和测试支持代码
+scripts/                  本地测试编排脚本
+playwright.config.ts      浏览器、服务生命周期和失败产物配置
 docker-compose.yml        PostgreSQL 与 MinIO 本地基础设施
 ```
 

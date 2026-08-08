@@ -10,8 +10,8 @@ describe("Home", () => {
     expect(
       screen.getByRole("heading", { level: 1, name: "岗位门槛分析系统" }),
     ).toBeTruthy();
-    expect(screen.getByText("文件解析 · 第七阶段")).toBeTruthy();
-    expect(screen.getByText(/PDF、Markdown 和 DOCX 文件上传/)).toBeTruthy();
+    expect(screen.getByText("自动化验证 · 第八阶段")).toBeTruthy();
+    expect(screen.getByText(/Playwright 浏览器回归/)).toBeTruthy();
     expect(
       screen.getByRole("link", { name: "API 存活检查" }).getAttribute("href"),
     ).toBe("http://localhost:8000/health");

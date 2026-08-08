@@ -143,3 +143,34 @@ def test_delete_storage_failure_keeps_job_for_retry(api_client: TestClient) -> N
     assert response.status_code == 503
     assert api_client.get(f"/api/v1/jobs/{uploaded['job']['id']}").status_code == 200
     assert store.objects
+
+
+def test_delete_target_role_removes_uploaded_jobs_and_objects(api_client: TestClient) -> None:
+    store = MemoryObjectStore()
+    app.dependency_overrides[get_object_store] = lambda: store
+    role = create_target_role(api_client)
+    uploaded = upload_markdown(api_client, role["id"]).json()
+
+    response = api_client.delete(f"/api/v1/target-roles/{role['id']}")
+
+    assert response.status_code == 204
+    assert store.objects == {}
+    assert api_client.get(f"/api/v1/target-roles/{role['id']}").status_code == 404
+    assert api_client.get(f"/api/v1/jobs/{uploaded['job']['id']}").status_code == 404
+
+
+def test_delete_target_role_storage_failure_keeps_database_records(
+    api_client: TestClient,
+) -> None:
+    store = MemoryObjectStore()
+    app.dependency_overrides[get_object_store] = lambda: store
+    role = create_target_role(api_client)
+    uploaded = upload_markdown(api_client, role["id"]).json()
+    store.delete_unavailable = True
+
+    response = api_client.delete(f"/api/v1/target-roles/{role['id']}")
+
+    assert response.status_code == 503
+    assert api_client.get(f"/api/v1/target-roles/{role['id']}").status_code == 200
+    assert api_client.get(f"/api/v1/jobs/{uploaded['job']['id']}").status_code == 200
+    assert store.objects

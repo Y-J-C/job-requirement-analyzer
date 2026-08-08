@@ -147,6 +147,37 @@ h1 {
   resize: vertical;
 }
 
+.source-mode {
+  display: flex;
+  gap: 1rem;
+  padding: 0;
+  border: 0;
+}
+
+.source-mode legend {
+  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.source-mode label {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.source-mode input {
+  width: auto;
+}
+
+.field-hint,
+.parse-message {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.8125rem;
+  line-height: 1.6;
+}
+
 .field input:focus-visible,
 .field select:focus-visible,
 .field textarea:focus-visible {

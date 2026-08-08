@@ -34,6 +34,28 @@ const job = {
   updated_at: "2026-08-06T12:00:00Z",
 };
 
+const extractingJob = {
+  ...job,
+  id: "5f4ebd38-7933-4bc2-b7c7-109f0777b94a",
+  original_text: "",
+  status: "extracting",
+};
+
+const sourceFile = {
+  id: "4f04775f-40c1-481e-9bc4-81b113242a6a",
+  job_posting_id: extractingJob.id,
+  original_filename: "岗位.md",
+  declared_mime_type: "text/markdown",
+  detected_media_type: "text/markdown",
+  size_bytes: 17,
+  sha256: "a".repeat(64),
+  parse_status: "pending",
+  parser_version: null,
+  error_code: null,
+  created_at: "2026-08-08T02:00:00Z",
+  updated_at: "2026-08-08T02:00:00Z",
+};
+
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -99,5 +121,86 @@ describe("JobPostingDashboard", () => {
     });
     expect(fetchMock).toHaveBeenCalledTimes(3);
   });
-});
 
+  it("uploads a source file and refreshes the extracted text", async () => {
+    const extractedJob = { ...extractingJob, original_text: "# JD\nSQL required", status: "draft" };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(role))
+      .mockResolvedValueOnce(jsonResponse({ items: [], total: 0 }))
+      .mockResolvedValueOnce(jsonResponse({ job: extractingJob, source_file: sourceFile }))
+      .mockResolvedValueOnce(jsonResponse(extractedJob))
+      .mockResolvedValueOnce(jsonResponse({
+        ...sourceFile,
+        parse_status: "succeeded",
+        parser_version: "document-parser-v1",
+      }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<JobPostingDashboard roleId={role.id} />);
+    expect(await screen.findByRole("heading", { name: role.name })).toBeTruthy();
+
+    fireEvent.click(screen.getByLabelText("上传文件"));
+    expect(screen.queryByLabelText("JD 原文")).toBeNull();
+    expect(screen.getByText("支持 PDF、Markdown、DOCX；最大 10 MiB")).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("公司名称"), {
+      target: { value: "示例科技" },
+    });
+    fireEvent.change(screen.getByLabelText("岗位名称"), {
+      target: { value: "数据分析实习生" },
+    });
+    const file = new File(["# JD\nSQL required"], "岗位.md", { type: "text/markdown" });
+    fireEvent.change(screen.getByLabelText("岗位文件"), { target: { files: [file] } });
+    const submitButton = screen.getByRole("button", { name: "上传并提取" });
+    fireEvent.submit(submitButton.closest("form")!);
+
+    expect(await screen.findByText(/SQL required/)).toBeTruthy();
+    const uploadCall = fetchMock.mock.calls[2];
+    expect(uploadCall[1].body).toBeInstanceOf(FormData);
+    expect(uploadCall[1].headers).toBeUndefined();
+  });
+
+  it("restores a stable parse error after page refresh", async () => {
+    const failedJob = { ...extractingJob, status: "failed" };
+    const failedSource = {
+      ...sourceFile,
+      parse_status: "failed",
+      error_code: "no_extractable_text",
+    };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ ...role, job_count: 1 }))
+      .mockResolvedValueOnce(jsonResponse({ items: [failedJob], total: 1 }))
+      .mockResolvedValueOnce(jsonResponse(failedJob))
+      .mockResolvedValueOnce(jsonResponse(failedSource));
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<JobPostingDashboard roleId={role.id} />);
+
+    expect(await screen.findByText("未检测到可解析文本；扫描版 PDF 暂不支持。")).toBeTruthy();
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+  });
+
+  it("shows a stable upload validation error in Chinese", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(role))
+      .mockResolvedValueOnce(jsonResponse({ items: [], total: 0 }))
+      .mockResolvedValueOnce(jsonResponse({
+        detail: { code: "file_signature_mismatch", message: "internal detail" },
+      }, false));
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<JobPostingDashboard roleId={role.id} />);
+    expect(await screen.findByRole("heading", { name: role.name })).toBeTruthy();
+    fireEvent.click(screen.getByLabelText("上传文件"));
+    fireEvent.change(screen.getByLabelText("公司名称"), { target: { value: "示例科技" } });
+    fireEvent.change(screen.getByLabelText("岗位名称"), { target: { value: "数据分析" } });
+    fireEvent.change(screen.getByLabelText("岗位文件"), {
+      target: { files: [new File(["bad"], "岗位.pdf", { type: "application/pdf" })] },
+    });
+    fireEvent.submit(screen.getByRole("button", { name: "上传并提取" }).closest("form")!);
+
+    expect((await screen.findByRole("alert")).textContent).toContain("文件内容与扩展名不匹配");
+  });
+});

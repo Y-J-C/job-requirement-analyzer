@@ -15,13 +15,13 @@
     "test": "pnpm test:web && pnpm test:api",
     "test:web": "pnpm --dir apps/web test",
     "test:api": ".\\.venv\\Scripts\\python.exe -m pytest apps/api/tests",
-    "test:api:integration": "cross-env RUN_DATABASE_TESTS=1 .\\.venv\\Scripts\\python.exe -m pytest apps/api/tests/integration",
+    "test:api:integration": "cross-env RUN_DATABASE_TESTS=1 RUN_STORAGE_TESTS=1 .\\.venv\\Scripts\\python.exe -m pytest apps/api/tests/integration",
     "build": "pnpm build:web && pnpm build:api",
     "build:web": "pnpm --dir apps/web build",
     "build:api": ".\\.venv\\Scripts\\python.exe -m compileall -q apps/api/app",
-    "db:up": "docker compose up -d postgres",
+    "db:up": "docker compose up -d postgres minio",
     "db:down": "docker compose down",
-    "db:logs": "docker compose logs -f postgres",
+    "db:logs": "docker compose logs -f postgres minio",
     "api:migrate": ".\\.venv\\Scripts\\python.exe -m alembic -c apps/api/alembic.ini upgrade head"
   },
   "devDependencies": {

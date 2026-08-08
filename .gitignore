@@ -18,6 +18,7 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 *.egg-info/
+build/
 
 # Editors and operating systems
 .idea/
@@ -27,4 +28,3 @@ Thumbs.db
 
 # Local data
 .data/
-

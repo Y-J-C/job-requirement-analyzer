@@ -4,7 +4,9 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models.job_posting import JobPosting
+from app.models.source_file import SourceFile
 from app.schemas.job_posting import JobPostingCreate
+from app.storage.contracts import ObjectStore
 
 
 def create_job_posting(
@@ -52,6 +54,16 @@ def get_job_posting(session: Session, job_id: uuid.UUID) -> JobPosting | None:
     return session.get(JobPosting, job_id)
 
 
-def delete_job_posting(session: Session, job_posting: JobPosting) -> None:
+def delete_job_posting(
+    session: Session,
+    job_posting: JobPosting,
+    *,
+    store: ObjectStore,
+) -> None:
+    source_file = session.scalar(
+        select(SourceFile).where(SourceFile.job_posting_id == job_posting.id)
+    )
+    if source_file is not None:
+        store.delete(source_file.object_key)
     session.delete(job_posting)
     session.commit()

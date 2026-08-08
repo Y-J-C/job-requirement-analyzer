@@ -9,17 +9,21 @@ description = "岗位门槛分析系统 API"
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "alembic>=1.16,<2",
+    "boto3>=1.40,<2",
     "fastapi==0.141.1",
     "httpx>=0.28,<1",
     "psycopg[binary]>=3.2,<4",
     "pydantic-settings>=2.10,<3",
+    "pypdf>=6.0,<7",
+    "python-docx>=1.2,<2",
+    "python-multipart>=0.0.20,<1",
     "sqlalchemy>=2.0,<3",
     "uvicorn[standard]>=0.35,<1",
 ]
 
 [project.optional-dependencies]
 dev = [
-    "pytest>=8.4,<9",
+    "pytest>=9.0.3,<10",
     "ruff>=0.12,<1",
 ]
 

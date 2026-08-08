@@ -33,6 +33,10 @@ class JobPosting(Base):
             "'review_required', 'confirmed', 'failed')",
             name="job_posting_status",
         ),
+        CheckConstraint(
+            "length(trim(original_text)) > 0 OR status IN ('extracting', 'failed')",
+            name="job_posting_original_text_required",
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)

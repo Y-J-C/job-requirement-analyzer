@@ -5,6 +5,7 @@ from app.models.requirement_item import (
     RequirementItem,
     RequirementType,
 )
+from app.models.source_file import SourceFile, SourceFileStatus
 from app.models.target_role import RecruitmentStage, TargetRole
 
 __all__ = [
@@ -17,5 +18,7 @@ __all__ = [
     "RequirementExplicitness",
     "RequirementItem",
     "RequirementType",
+    "SourceFile",
+    "SourceFileStatus",
     "TargetRole",
 ]

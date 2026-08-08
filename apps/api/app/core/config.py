@@ -12,6 +12,16 @@ class Settings(BaseSettings):
         "postgresql+psycopg://job_analyzer:job_analyzer_local@localhost:5432/job_analyzer"
     )
     web_origin: str = "http://localhost:3000"
+    s3_endpoint_url: str = "http://localhost:19000"
+    s3_bucket: str = Field(default="job-source-files", min_length=1, max_length=63)
+    s3_region: str = Field(default="us-east-1", min_length=1, max_length=64)
+    s3_access_key: str = Field(default="job_analyzer", min_length=1)
+    s3_secret_key: SecretStr = SecretStr("job_analyzer_local")
+    upload_max_bytes: int = Field(default=10 * 1024 * 1024, ge=1, le=100 * 1024 * 1024)
+    pdf_max_pages: int = Field(default=50, ge=1, le=500)
+    extracted_text_max_chars: int = Field(default=100_000, ge=1_000, le=100_000)
+    document_worker_lease_seconds: int = Field(default=120, ge=30, le=3600)
+    document_worker_max_attempts: int = Field(default=3, ge=1, le=10)
     deepseek_api_key: SecretStr | None = None
     deepseek_base_url: str = "https://api.deepseek.com"
     deepseek_model: str = "deepseek-v4-flash"
@@ -43,6 +53,23 @@ class Settings(BaseSettings):
             or parsed.path not in {"", "/v1"}
         ):
             raise ValueError("DeepSeek base URL must be the official HTTPS API endpoint")
+        return normalized
+
+    @field_validator("s3_endpoint_url")
+    @classmethod
+    def validate_s3_endpoint_url(cls, value: str) -> str:
+        normalized = value.rstrip("/")
+        parsed = urlparse(normalized)
+        if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+            raise ValueError("S3 endpoint URL must use HTTP or HTTPS")
+        return normalized
+
+    @field_validator("s3_bucket", "s3_region", "s3_access_key")
+    @classmethod
+    def reject_blank_storage_settings(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("Value must contain at least 1 character")
         return normalized
 
     @field_validator("deepseek_model")

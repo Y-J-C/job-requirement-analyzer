@@ -29,11 +29,15 @@ def create_ai_analysis_run(
     locked_job = session.scalar(
         select(JobPosting).where(JobPosting.id == job.id).with_for_update()
     )
-    if locked_job is None or locked_job.status not in {
+    if (
+        locked_job is None
+        or not locked_job.original_text.strip()
+        or locked_job.status not in {
         JobPostingStatus.DRAFT,
         JobPostingStatus.FAILED,
         JobPostingStatus.CONFIRMED,
-    }:
+        }
+    ):
         return None
     active_task = session.scalar(
         select(AnalysisRun.id).where(

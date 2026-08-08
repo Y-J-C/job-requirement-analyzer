@@ -8,7 +8,7 @@ export default function Home() {
   return (
     <main className="shell">
       <header className="masthead">
-        <p className="eyebrow">持久化分析 · 第六阶段</p>
+        <p className="eyebrow">文件解析 · 第七阶段</p>
         <h1>岗位门槛分析系统</h1>
         <p className="lede">
           将零散招聘信息整理为有原文依据、经人工确认、可以跨岗位汇总的准入条件。
@@ -24,7 +24,8 @@ export default function Home() {
       </nav>
 
       <footer>
-        当前已支持 DeepSeek 持久化分析、人工审核、版本切换和岗位门槛汇总；文件上传与登录尚未启用。
+        当前已支持 PDF、Markdown 和 DOCX 文件上传与持久化解析，并可继续进行 DeepSeek
+        分析、人工审核、版本切换和岗位门槛汇总；登录尚未启用。
       </footer>
     </main>
   );

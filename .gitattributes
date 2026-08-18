@@ -1,0 +1,2 @@
+# Keep immutable AI evaluation fixtures byte-identical across platforms.
+apps/api/tests/fixtures/*.json text eol=lf

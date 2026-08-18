@@ -8,6 +8,10 @@ from app.core.config import Settings, get_settings
 
 
 def build_requirement_analyzer(settings: Settings) -> RequirementAnalyzer:
+    if settings.app_env == "e2e":
+        from app.ai.e2e import E2eRequirementAnalyzer
+
+        return E2eRequirementAnalyzer()
     api_key = (
         settings.deepseek_api_key.get_secret_value()
         if settings.deepseek_api_key is not None

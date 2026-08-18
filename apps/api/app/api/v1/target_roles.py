@@ -39,7 +39,11 @@ def list_target_roles_endpoint(
     offset: Annotated[int, Query(ge=0)] = 0,
     limit: Annotated[int, Query(ge=1, le=100)] = 50,
 ) -> TargetRoleListResponse:
-    rows, total = list_target_roles(session, offset=offset, limit=limit)
+    rows, total = list_target_roles(
+        session,
+        offset=offset,
+        limit=limit,
+    )
     items = [
         TargetRoleResponse.model_validate(target_role).model_copy(update={"job_count": job_count})
         for target_role, job_count in rows

@@ -66,18 +66,27 @@ export function TargetRoleDashboard() {
         <p>同一方向只收集职责与能力结构相近的岗位，避免汇总结果失真。</p>
       </div>
 
-      <TargetRoleForm onCreate={handleCreate} />
-
-      <div className="list-heading">
-        <h2>已创建的方向</h2>
-        <span>{roles.length} 个</span>
+      <div className="direction-workspace">
+        <div className="direction-create">
+          <p className="section-index">01 / 新建方向</p>
+          <TargetRoleForm onCreate={handleCreate} />
+        </div>
+        <div className="direction-list">
+          <div className="list-heading">
+            <div>
+              <p className="section-index">02 / 继续研究</p>
+              <h2>已创建的方向</h2>
+            </div>
+            <span>{roles.length} 个</span>
+          </div>
+          <TargetRoleList
+            roles={roles}
+            isLoading={isLoading}
+            loadError={loadError}
+            onRetry={() => void loadRoles()}
+          />
+        </div>
       </div>
-      <TargetRoleList
-        roles={roles}
-        isLoading={isLoading}
-        loadError={loadError}
-        onRetry={() => void loadRoles()}
-      />
     </section>
   );
 }

@@ -1,6 +1,6 @@
 import type { APIRequestContext, APIResponse } from "@playwright/test";
 
-export const apiBaseUrl = "http://localhost:8000";
+export const apiBaseUrl = process.env.E2E_API_BASE_URL ?? "http://localhost:18000";
 
 type TargetRole = {
   id: string;

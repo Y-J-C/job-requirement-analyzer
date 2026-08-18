@@ -1,3 +1,5 @@
+import { apiClient, requireData } from "@/lib/api-client";
+
 import type {
   CreateTargetRoleInput,
   TargetRole,
@@ -5,38 +7,19 @@ import type {
 } from "./types";
 
 
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
-
-
-async function parseResponse<T>(response: Response): Promise<T> {
-  if (!response.ok) {
-    throw new Error(`Request failed with status ${response.status}`);
-  }
-  return response.json() as Promise<T>;
-}
-
-
 export async function fetchTargetRoles(): Promise<TargetRoleListResponse> {
-  const response = await fetch(`${apiBaseUrl}/api/v1/target-roles`, {
-    cache: "no-store",
-  });
-  return parseResponse<TargetRoleListResponse>(response);
+  return requireData(await apiClient.GET("/api/v1/target-roles", { cache: "no-store" }));
 }
 
 
 export async function fetchTargetRole(roleId: string): Promise<TargetRole> {
-  const response = await fetch(`${apiBaseUrl}/api/v1/target-roles/${roleId}`, {
+  return requireData(await apiClient.GET("/api/v1/target-roles/{role_id}", {
     cache: "no-store",
-  });
-  return parseResponse<TargetRole>(response);
+    params: { path: { role_id: roleId } },
+  }));
 }
 
 
 export async function createTargetRole(input: CreateTargetRoleInput): Promise<TargetRole> {
-  const response = await fetch(`${apiBaseUrl}/api/v1/target-roles`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(input),
-  });
-  return parseResponse<TargetRole>(response);
+  return requireData(await apiClient.POST("/api/v1/target-roles", { body: input }));
 }

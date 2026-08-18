@@ -5,7 +5,10 @@ import { RequirementReviewDashboard } from "./RequirementReviewDashboard";
 
 
 function jsonResponse(body: unknown, ok = true): Response {
-  return { ok, json: async () => body } as Response;
+  return new Response(JSON.stringify(body), {
+    status: ok ? 200 : 503,
+    headers: { "Content-Type": "application/json" },
+  });
 }
 
 
@@ -90,10 +93,74 @@ describe("RequirementReviewDashboard", () => {
 
     expect(await screen.findByRole("heading", { name: "SQL" })).toBeTruthy();
     expect(screen.getByText("AI 提取 · 置信度 98%" )).toBeTruthy();
-    expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining(`/api/v1/jobs/${job.id}/analyze`),
-      expect.objectContaining({ method: "POST" }),
-    );
+    const analyzeRequest = fetchMock.mock.calls
+      .map(([input]) => input as Request)
+      .find((request) => request.url.endsWith(`/api/v1/jobs/${job.id}/analyze`));
+    expect(analyzeRequest?.method).toBe("POST");
+  });
+
+  it("guides manual review when AI analysis finds no requirements", async () => {
+    const run = {
+      id: "77334d69-c46e-4dce-a42d-7d9a2dd58fb5",
+      job_posting_id: job.id,
+      version: 1,
+      status: "pending",
+      source: "ai",
+      model_provider: "deepseek",
+      model_name: "deepseek-v4-flash",
+      prompt_version: "requirements-v2",
+      schema_version: "1.0",
+      error_code: null,
+      attempt_count: 0,
+      max_attempts: 3,
+      available_at: "2026-08-06T12:00:00Z",
+      lease_expires_at: null,
+      started_at: null,
+      completed_at: null,
+      created_at: "2026-08-06T12:00:00Z",
+      updated_at: "2026-08-06T12:00:00Z",
+    };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(job))
+      .mockResolvedValueOnce(jsonResponse({ items: [], total: 0, job_status: "draft" }))
+      .mockResolvedValueOnce(jsonResponse(run))
+      .mockResolvedValueOnce(jsonResponse({ ...run, status: "succeeded" }))
+      .mockResolvedValueOnce(jsonResponse({ ...job, status: "review_required" }))
+      .mockResolvedValueOnce(
+        jsonResponse({ items: [], total: 0, job_status: "review_required" }),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<RequirementReviewDashboard jobId={job.id} />);
+    fireEvent.click(await screen.findByRole("button", { name: "使用 DeepSeek 提取门槛" }));
+
+    expect(await screen.findByText(
+      "未提取到明确要求，请核对原文并手工新增。",
+      { exact: true },
+    )).toBeTruthy();
+    expect(screen.queryByText("AI 提取失败，未写入不完整结果。请稍后重试。")).toBeNull();
+    expect(
+      (screen.getByRole("button", { name: "确认整份岗位" }) as HTMLButtonElement).disabled,
+    ).toBe(true);
+    expect(screen.getByRole("heading", { name: "新增原子要求" })).toBeTruthy();
+  });
+
+  it("restores the empty analysis guidance after refresh", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ ...job, status: "review_required" }))
+      .mockResolvedValueOnce(
+        jsonResponse({ items: [], total: 0, job_status: "review_required" }),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<RequirementReviewDashboard jobId={job.id} />);
+
+    expect(await screen.findByText(
+      "未提取到明确要求，请核对原文并手工新增。",
+      { exact: true },
+    )).toBeTruthy();
   });
 
   it("shows the source JD and creates a manual requirement", async () => {
@@ -252,9 +319,8 @@ describe("RequirementReviewDashboard", () => {
     render(<RequirementReviewDashboard jobId={job.id} />);
 
     expect(await screen.findByRole("heading", { name: "SQL" })).toBeTruthy();
-    expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining(`/api/v1/jobs/${job.id}/analysis-runs/latest`),
-      expect.objectContaining({ cache: "no-store" }),
-    );
+    expect(fetchMock.mock.calls.some(([input]) =>
+      (input as Request).url.endsWith(`/api/v1/jobs/${job.id}/analysis-runs/latest`)
+    )).toBe(true);
   });
 });

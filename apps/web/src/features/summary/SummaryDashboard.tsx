@@ -3,12 +3,14 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { PageState } from "@/components/PageState";
 import {
   requirementTypeLabels,
   type RequirementType,
 } from "@/features/requirements/types";
 
 import { fetchTargetRoleSummary } from "./api";
+import { SummaryExportButton } from "./SummaryExportButton";
 import { SummaryList } from "./SummaryList";
 import type { TargetRoleSummary } from "./types";
 
@@ -45,8 +47,8 @@ export function SummaryDashboard({ roleId }: { roleId: string }) {
     setFilter(nextFilter);
   }
 
-  if (isLoading) return <main className="shell"><p aria-busy="true">正在计算确认汇总…</p></main>;
-  if (error || !summary) return <main className="shell"><p role="alert">{error ?? "目标方向不存在。"}</p></main>;
+  if (isLoading) return <PageState title="正在计算确认汇总" message="正在按岗位去重并整理已确认要求…" />;
+  if (error || !summary) return <PageState kind="error" title="确认汇总加载失败" message={error ?? "目标方向不存在。"} />;
 
   const emptyMessage = summary.confirmed_job_count === 0
     ? "还没有已确认岗位"
@@ -56,7 +58,10 @@ export function SummaryDashboard({ roleId }: { roleId: string }) {
 
   return (
     <main className="shell summary-page">
-      <Link className="back-link" href={`/target-roles/${roleId}`}>← 返回岗位方向</Link>
+      <nav className="page-nav" aria-label="页面导航">
+        <Link className="back-link" href={`/target-roles/${roleId}`}>← 返回岗位方向</Link>
+        <span>仅使用人工确认的数据</span>
+      </nav>
       <header className="detail-header">
         <p className="eyebrow">确定性事实汇总</p>
         <h1>{summary.target_role_name} · 确认汇总</h1>
@@ -72,21 +77,25 @@ export function SummaryDashboard({ roleId }: { roleId: string }) {
       <section className="summary-results" aria-labelledby="summary-results-heading">
         <div className="summary-toolbar">
           <div>
+            <p className="section-index">按岗位去重统计</p>
             <h2 id="summary-results-heading">要求覆盖率</h2>
             <p>同名条件在不同要求类型下分别统计。</p>
           </div>
-          <div className="field filter-field">
-            <label htmlFor="requirement-type-filter">要求类型筛选</label>
-            <select
-              id="requirement-type-filter"
-              value={filter}
-              onChange={(event) => handleFilterChange(event.target.value as SummaryFilter)}
-            >
-              <option value="all">全部类型</option>
-              {Object.entries(requirementTypeLabels).map(([value, label]) => (
-                <option key={value} value={value}>{label}</option>
-              ))}
-            </select>
+          <div className="summary-toolbar-actions">
+            <SummaryExportButton summary={summary} reportName="确认汇总" />
+            <div className="field filter-field">
+              <label htmlFor="requirement-type-filter">要求类型筛选</label>
+              <select
+                id="requirement-type-filter"
+                value={filter}
+                onChange={(event) => handleFilterChange(event.target.value as SummaryFilter)}
+              >
+                <option value="all">全部类型</option>
+                {Object.entries(requirementTypeLabels).map(([value, label]) => (
+                  <option key={value} value={value}>{label}</option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
 

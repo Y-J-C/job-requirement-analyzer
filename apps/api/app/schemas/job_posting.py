@@ -18,14 +18,24 @@ class JobPostingCreate(BaseModel):
     original_text: str = Field(min_length=1, max_length=100_000)
 
 
+class JobPostingMetadataUpdate(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    company_name: str | None = Field(default=None, min_length=1, max_length=100)
+    job_title: str | None = Field(default=None, min_length=1, max_length=150)
+    recruitment_stage: RecruitmentStage | None = None
+    city: str | None = Field(default=None, min_length=1, max_length=100)
+    source_url: HttpUrl | None = Field(default=None, max_length=2048)
+
+
 class JobPostingResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
     active_analysis_run_id: uuid.UUID | None
     target_role_id: uuid.UUID
-    company_name: str
-    job_title: str
+    company_name: str | None
+    job_title: str | None
     recruitment_stage: RecruitmentStage
     city: str | None
     source_url: str | None

@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_session
 from app.schemas.analysis import AnalysisRunResponse
-from app.services.analysis import get_analysis_run
+from app.services.resource_lookup import get_analysis_run
 
 router = APIRouter(prefix="/analysis-runs", tags=["analysis"])
 SessionDependency = Annotated[Session, Depends(get_session)]
@@ -21,4 +21,3 @@ def get_analysis_run_endpoint(
     if run is None:
         raise HTTPException(status_code=404, detail="Analysis run not found")
     return AnalysisRunResponse.model_validate(run)
-

@@ -11,6 +11,7 @@ out/
 coverage/
 playwright-report/
 test-results/
+.playwright-cli/
 *.tsbuildinfo
 
 # Python

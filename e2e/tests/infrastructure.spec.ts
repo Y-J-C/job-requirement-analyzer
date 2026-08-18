@@ -4,16 +4,18 @@ import {
   createTargetRole,
   deleteTargetRole,
   getTargetRole,
+  apiBaseUrl,
   taggedName,
 } from "../support/api";
 
 test("基础服务可以通过浏览器测试访问", async ({ page, request }) => {
-  const healthResponse = await request.get("http://localhost:8000/health");
+  const healthResponse = await request.get(`${apiBaseUrl}/health`);
   expect(healthResponse.ok()).toBe(true);
   await expect(healthResponse.json()).resolves.toEqual({ status: "ok" });
 
   await page.goto("/");
   await expect(page).toHaveTitle(/岗位门槛分析系统/);
+  await expect(page.getByRole("button", { name: "退出登录" })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "岗位门槛分析系统" })).toBeVisible();
 });
 

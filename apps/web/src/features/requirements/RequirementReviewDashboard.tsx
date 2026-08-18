@@ -3,7 +3,10 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-import { fetchJobPosting } from "@/features/job-postings/api";
+import { PageState } from "@/components/PageState";
+import { fetchJobPosting, updateJobMetadata } from "@/features/job-postings/api";
+import { JobMetadataForm } from "@/features/job-postings/JobMetadataForm";
+import type { JobMetadataUpdate } from "@/features/job-postings/types";
 import type { JobPosting } from "@/features/job-postings/types";
 
 import {
@@ -19,6 +22,9 @@ import {
 import { RequirementForm } from "./RequirementForm";
 import { RequirementList } from "./RequirementList";
 import type { RequirementInput, RequirementItem } from "./types";
+
+
+const emptyAnalysisMessage = "未提取到明确要求，请核对原文并手工新增。";
 
 
 export function RequirementReviewDashboard({ jobId }: { jobId: string }) {
@@ -47,6 +53,9 @@ export function RequirementReviewDashboard({ jobId }: { jobId: string }) {
         if (isCurrent) {
           setJob({ ...loadedJob, status: listing.job_status });
           setItems(listing.items);
+          if (listing.job_status === "review_required" && listing.items.length === 0) {
+            setAnalysisMessage(emptyAnalysisMessage);
+          }
           if (["queued", "analyzing"].includes(listing.job_status)) {
             setIsAnalyzing(true);
             void fetchLatestAnalysisRun(jobId)
@@ -86,7 +95,11 @@ export function RequirementReviewDashboard({ jobId }: { jobId: string }) {
           if (!isCurrent) return;
           setJob({ ...loadedJob, status: listing.job_status });
           setItems(listing.items);
-          setAnalysisMessage("提取完成。请逐条核对后确认整份岗位。");
+          setAnalysisMessage(
+            listing.items.length === 0
+              ? emptyAnalysisMessage
+              : "提取完成。请逐条核对后确认整份岗位。",
+          );
           setAnalysisRunId(null);
           setIsAnalyzing(false);
           return;
@@ -121,6 +134,11 @@ export function RequirementReviewDashboard({ jobId }: { jobId: string }) {
     const created = await createRequirement(jobId, input);
     setItems((current) => [...current, created]);
     setJob((current) => current ? { ...current, status: "review_required" } : current);
+  }
+
+  async function handleMetadataSave(input: JobMetadataUpdate) {
+    const updated = await updateJobMetadata(jobId, input);
+    setJob(updated);
   }
 
   async function handleUpdate(item: RequirementItem, input: RequirementInput) {
@@ -176,8 +194,8 @@ export function RequirementReviewDashboard({ jobId }: { jobId: string }) {
     }
   }
 
-  if (isLoading) return <main className="shell"><p aria-busy="true">正在加载审核数据…</p></main>;
-  if (error || !job) return <main className="shell"><p role="alert">{error ?? "岗位不存在。"}</p></main>;
+  if (isLoading) return <PageState title="正在加载审核数据" message="正在准备原文、AI 草稿与确认状态…" />;
+  if (error || !job) return <PageState kind="error" title="岗位审核页加载失败" message={error ?? "岗位不存在。"} />;
   const isActiveVersion = job.active_analysis_run_id !== null
     && items.length > 0
     && items.every((item) => item.analysis_run_id === job.active_analysis_run_id);
@@ -186,11 +204,14 @@ export function RequirementReviewDashboard({ jobId }: { jobId: string }) {
 
   return (
     <main className="shell review-page">
-      <Link className="back-link" href={`/target-roles/${job.target_role_id}`}>← 返回岗位方向</Link>
+      <nav className="page-nav" aria-label="页面导航">
+        <Link className="back-link" href={`/target-roles/${job.target_role_id}`}>← 返回岗位方向</Link>
+        <span>原文 → AI 草稿 → 人工确认</span>
+      </nav>
       <header className="detail-header review-header">
         <div>
           <p className="eyebrow">AI 提取与人工审核</p>
-          <h1>{job.company_name} · {job.job_title}</h1>
+          <h1>{job.company_name ?? "待补充公司"} · {job.job_title ?? "待补充岗位"}</h1>
           <p>逐条保留依据，确认后再进入后续汇总。</p>
         </div>
         <span className={`status-badge status-${job.status}`}>
@@ -201,8 +222,23 @@ export function RequirementReviewDashboard({ jobId }: { jobId: string }) {
       {actionError ? <p className="form-error" role="alert">{actionError}</p> : null}
       {analysisMessage ? <p className="analysis-message" role="status">{analysisMessage}</p> : null}
 
+      <section className="metadata-section" aria-labelledby="job-metadata-heading">
+        <div className="section-heading-row">
+          <div>
+            <p className="section-index">01 / 基础信息</p>
+            <h2 id="job-metadata-heading">岗位信息</h2>
+          </div>
+          <p>用于识别样本与回溯来源</p>
+        </div>
+        {!job.company_name || !job.job_title ? (
+          <p className="analysis-message">AI 未找到完整公司或岗位名称，请补充后再确认。</p>
+        ) : null}
+        <JobMetadataForm job={job} onSave={handleMetadataSave} />
+      </section>
+
       <div className="review-workspace">
         <aside className="source-panel" aria-labelledby="source-heading">
+          <p className="section-index">02 / 证据底稿</p>
           <h2 id="source-heading">岗位原文</h2>
           <pre>{job.original_text}</pre>
         </aside>
@@ -210,6 +246,7 @@ export function RequirementReviewDashboard({ jobId }: { jobId: string }) {
         <div className="review-panel">
           <section className="analysis-action" aria-labelledby="ai-analysis-heading">
             <div>
+              <p className="section-index">03 / 提取与审核</p>
               <h2 id="ai-analysis-heading">DeepSeek 原子要求提取</h2>
               <p>模型只生成待审核草稿；系统会校验每条依据确实存在于岗位原文。</p>
             </div>
@@ -246,7 +283,7 @@ export function RequirementReviewDashboard({ jobId }: { jobId: string }) {
 
           <div className="confirm-bar">
             <p>任何新增、编辑或删除都会使整份岗位重新进入待确认。</p>
-            <button type="button" onClick={() => void handleConfirm()} disabled={items.length === 0 || job.status !== "review_required"}>
+            <button type="button" onClick={() => void handleConfirm()} disabled={items.length === 0 || job.status !== "review_required" || !job.company_name || !job.job_title}>
               {isActiveVersion ? "当前版本已确认" : "确认整份岗位"}
             </button>
           </div>

@@ -12,16 +12,15 @@ from app.schemas.requirement_item import (
     RequirementItemResponse,
     RequirementItemUpdate,
 )
-from app.services.job_posting import get_job_posting
 from app.services.requirement_review import (
     RequirementReviewConflict,
     confirm_requirements,
     create_manual_requirement,
     delete_requirement,
-    get_requirement,
     list_manual_requirements,
     update_requirement,
 )
+from app.services.resource_lookup import get_job, get_requirement
 
 job_requirements_router = APIRouter(prefix="/jobs", tags=["requirements"])
 requirements_router = APIRouter(prefix="/requirements", tags=["requirements"])
@@ -38,7 +37,7 @@ def list_requirements_endpoint(
     offset: Annotated[int, Query(ge=0)] = 0,
     limit: Annotated[int, Query(ge=1, le=100)] = 100,
 ) -> RequirementItemListResponse:
-    job = get_job_posting(session, job_id)
+    job = get_job(session, job_id)
     if job is None:
         raise HTTPException(status_code=404, detail="Job posting not found")
     items, total = list_manual_requirements(session, job_id, offset=offset, limit=limit)
@@ -55,7 +54,7 @@ def create_requirement_endpoint(
     payload: RequirementItemCreate,
     session: SessionDependency,
 ) -> RequirementItemResponse:
-    job = get_job_posting(session, job_id)
+    job = get_job(session, job_id)
     if job is None:
         raise HTTPException(status_code=404, detail="Job posting not found")
     try:
@@ -133,7 +132,7 @@ def confirm_requirements_endpoint(
     job_id: uuid.UUID,
     session: SessionDependency,
 ) -> JobPostingResponse:
-    job = get_job_posting(session, job_id)
+    job = get_job(session, job_id)
     if job is None:
         raise HTTPException(status_code=404, detail="Job posting not found")
     if not confirm_requirements(session, job):

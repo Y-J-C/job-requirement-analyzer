@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 from app.core.database import SessionLocal
 from app.main import app
 from app.models.target_role import TargetRole
+from app.security.malware import ClamAvFileScanner
 from app.storage.dependencies import get_object_store
 from app.worker import run_source_file_once
 
@@ -59,9 +60,10 @@ def test_markdown_upload_persists_and_extracts_with_postgres_and_minio() -> None
                 store,
                 worker_id="integration-worker",
                 now=datetime.now(UTC),
+                file_scanner=ClamAvFileScanner(host="127.0.0.1", port=13310),
             )
             job = client.get(f"/api/v1/jobs/{job_id}").json()
-            assert job["status"] == "draft"
+            assert job["status"] == "queued"
             assert job["original_text"] == "# 岗位要求\n熟练使用 SQL"
         finally:
             if job_id is not None:

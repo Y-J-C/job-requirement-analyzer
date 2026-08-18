@@ -1,3 +1,6 @@
+import type { components } from "@/generated/api-schema";
+
+
 export const recruitmentStageLabels = {
   daily_internship: "日常实习",
   summer_internship: "暑期实习",
@@ -7,25 +10,7 @@ export const recruitmentStageLabels = {
   other: "其他",
 } as const;
 
-export type RecruitmentStage = keyof typeof recruitmentStageLabels;
-
-export type TargetRole = {
-  id: string;
-  name: string;
-  recruitment_stage: RecruitmentStage;
-  description: string | null;
-  created_at: string;
-  updated_at: string;
-  job_count: number;
-};
-
-export type TargetRoleListResponse = {
-  items: TargetRole[];
-  total: number;
-};
-
-export type CreateTargetRoleInput = {
-  name: string;
-  recruitment_stage: RecruitmentStage;
-  description: string | null;
-};
+export type RecruitmentStage = components["schemas"]["RecruitmentStage"];
+export type TargetRole = components["schemas"]["TargetRoleResponse"];
+export type TargetRoleListResponse = components["schemas"]["TargetRoleListResponse"];
+export type CreateTargetRoleInput = components["schemas"]["TargetRoleCreate"];

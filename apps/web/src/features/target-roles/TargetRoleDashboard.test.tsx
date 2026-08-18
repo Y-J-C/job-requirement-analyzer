@@ -5,10 +5,10 @@ import { TargetRoleDashboard } from "./TargetRoleDashboard";
 
 
 function jsonResponse(body: unknown, ok = true): Response {
-  return {
-    ok,
-    json: async () => body,
-  } as Response;
+  return new Response(JSON.stringify(body), {
+    status: ok ? 200 : 503,
+    headers: { "Content-Type": "application/json" },
+  });
 }
 
 
@@ -55,9 +55,9 @@ describe("TargetRoleDashboard", () => {
     expect(within(roleItem as HTMLLIElement).getByText("日常实习")).toBeTruthy();
     expect(fetchMock).toHaveBeenCalledTimes(2);
 
-    const createRequest = fetchMock.mock.calls[1];
-    expect(createRequest[0]).toBe("http://localhost:8000/api/v1/target-roles");
-    expect(JSON.parse(createRequest[1].body)).toEqual({
+    const createRequest = fetchMock.mock.calls[1][0] as Request;
+    expect(createRequest.url).toBe("http://localhost:8000/api/v1/target-roles");
+    expect(await createRequest.clone().json()).toEqual({
       name: "数据分析实习生",
       recruitment_stage: "daily_internship",
       description: "关注互联网公司的数据岗位",

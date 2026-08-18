@@ -5,7 +5,10 @@ import { SummaryDashboard } from "./SummaryDashboard";
 
 
 function jsonResponse(body: unknown, ok = true): Response {
-  return { ok, json: async () => body } as Response;
+  return new Response(JSON.stringify(body), {
+    status: ok ? 200 : 503,
+    headers: { "Content-Type": "application/json" },
+  });
 }
 
 
@@ -98,10 +101,8 @@ describe("SummaryDashboard", () => {
 
     expect(await screen.findByText("这个分类下还没有已确认要求")).toBeTruthy();
     expect(screen.getByRole("region", { name: "样本概况" }).textContent).toContain("2个已确认岗位");
-    expect(fetchMock).toHaveBeenLastCalledWith(
-      expect.stringContaining("requirement_type=preferred"),
-      expect.anything(),
-    );
+    const lastRequest = fetchMock.mock.calls.at(-1)?.[0] as Request;
+    expect(lastRequest.url).toContain("requirement_type=preferred");
   });
 
   it("shows an honest empty state when no job is confirmed", async () => {

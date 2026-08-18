@@ -10,7 +10,10 @@ from app.schemas.target_role import TargetRoleCreate
 from app.storage.contracts import ObjectStore
 
 
-def create_target_role(session: Session, payload: TargetRoleCreate) -> TargetRole:
+def create_target_role(
+    session: Session,
+    payload: TargetRoleCreate,
+) -> TargetRole:
     target_role = TargetRole(
         name=payload.name,
         recruitment_stage=payload.recruitment_stage,
@@ -43,8 +46,11 @@ def list_target_roles(
     return items, total
 
 
-def get_target_role(session: Session, role_id: uuid.UUID) -> TargetRole | None:
-    return session.get(TargetRole, role_id)
+def get_target_role(
+    session: Session,
+    role_id: uuid.UUID,
+) -> TargetRole | None:
+    return session.scalar(select(TargetRole).where(TargetRole.id == role_id))
 
 
 def get_target_role_with_job_count(

@@ -2,7 +2,16 @@ import uuid
 from datetime import datetime
 from enum import StrEnum
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, Integer, String
+from sqlalchemy import (
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy import Enum as SqlEnum
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -25,15 +34,20 @@ class SourceFile(Base):
             name="source_file_parse_status",
         ),
         CheckConstraint("size_bytes >= 0", name="source_file_size_bytes"),
+        CheckConstraint("sequence_index >= 0", name="source_file_sequence_index"),
         CheckConstraint("attempt_count >= 0", name="source_file_attempt_count"),
         CheckConstraint("max_attempts BETWEEN 1 AND 10", name="source_file_max_attempts"),
         Index("ix_source_files_parse_queue", "parse_status", "available_at"),
+        UniqueConstraint(
+            "job_posting_id", "sequence_index", name="uq_source_files_job_sequence"
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     job_posting_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("job_postings.id", ondelete="CASCADE"), unique=True, index=True
+        ForeignKey("job_postings.id", ondelete="CASCADE"), index=True
     )
+    sequence_index: Mapped[int] = mapped_column(Integer, default=0)
     object_key: Mapped[str] = mapped_column(String(255), unique=True)
     original_filename: Mapped[str] = mapped_column(String(255))
     declared_mime_type: Mapped[str] = mapped_column(String(255))
@@ -52,6 +66,7 @@ class SourceFile(Base):
         default=SourceFileStatus.PENDING,
     )
     parser_version: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    extracted_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     error_code: Mapped[str | None] = mapped_column(String(100), nullable=True)
     attempt_count: Mapped[int] = mapped_column(Integer, default=0)
     max_attempts: Mapped[int] = mapped_column(Integer, default=3)

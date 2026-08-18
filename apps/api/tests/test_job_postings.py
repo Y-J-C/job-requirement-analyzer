@@ -89,3 +89,22 @@ def test_create_job_rejects_invalid_input(api_client: TestClient) -> None:
     assert create_job(api_client, role["id"], source_url="file:///etc/passwd").status_code == 422
     assert create_job(api_client, role["id"], original_text="   ").status_code == 422
     assert create_job(api_client, role["id"], original_text="字" * 100001).status_code == 422
+
+
+def test_patch_updates_only_editable_job_metadata(api_client: TestClient) -> None:
+    role = create_target_role(api_client)
+    job = create_job(api_client, role["id"]).json()
+
+    response = api_client.patch(
+        f"/api/v1/jobs/{job['id']}",
+        json={"company_name": "新公司", "job_title": "新岗位", "city": None},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["company_name"] == "新公司"
+    assert response.json()["job_title"] == "新岗位"
+    assert response.json()["city"] is None
+    assert response.json()["original_text"] == job["original_text"]
+    assert api_client.patch(
+        f"/api/v1/jobs/{job['id']}", json={"original_text": "覆盖原文"}
+    ).status_code == 422

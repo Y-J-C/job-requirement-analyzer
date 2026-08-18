@@ -38,6 +38,15 @@ services:
       retries: 10
       start_period: 5s
 
+  clamav:
+    image: clamav/clamav:1.4.5
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${CLAMAV_PORT:-13310}:3310"
+    volumes:
+      - clamav_data:/var/lib/clamav
+
 volumes:
   postgres_data:
   minio_data:
+  clamav_data:

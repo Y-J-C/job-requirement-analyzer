@@ -189,6 +189,8 @@ def confirm_requirements(session: Session, job: JobPosting) -> bool:
     )
     if locked_job is None or locked_job.status != JobPostingStatus.REVIEW_REQUIRED:
         return False
+    if not locked_job.company_name or not locked_job.job_title:
+        return False
     analysis_run = get_review_run(session, job.id)
     if analysis_run is None:
         return False

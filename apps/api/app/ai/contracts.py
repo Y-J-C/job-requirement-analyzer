@@ -8,8 +8,9 @@ from app.models.requirement_item import RequirementExplicitness, RequirementType
 class AnalyzeJobRequest(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 
-    company_name: str = Field(min_length=1, max_length=100)
-    job_title: str = Field(min_length=1, max_length=150)
+    company_name: str | None = Field(default=None, min_length=1, max_length=100)
+    job_title: str | None = Field(default=None, min_length=1, max_length=150)
+    city: str | None = Field(default=None, min_length=1, max_length=100)
     original_text: str = Field(min_length=1, max_length=100_000)
 
 
@@ -27,7 +28,10 @@ class AnalyzeJobResult(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     schema_version: str = Field(pattern=r"^1\.0$")
-    requirements: list[ExtractedRequirement] = Field(min_length=1, max_length=100)
+    company_name: str | None = Field(default=None, min_length=1, max_length=100)
+    job_title: str | None = Field(default=None, min_length=1, max_length=150)
+    city: str | None = Field(default=None, min_length=1, max_length=100)
+    requirements: list[ExtractedRequirement] = Field(max_length=100)
     warnings: list[Annotated[str, Field(max_length=500)]] = Field(
         default_factory=list,
         max_length=20,

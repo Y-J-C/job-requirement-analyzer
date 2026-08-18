@@ -8,6 +8,11 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.api.v1 import router as api_v1_router
 from app.core.config import get_settings
 from app.core.database import check_database_connection
+from app.core.problems import (
+    STANDARD_PROBLEM_RESPONSES,
+    install_problem_handlers,
+    install_problem_openapi,
+)
 
 
 class HealthResponse(BaseModel):
@@ -24,7 +29,9 @@ def create_app() -> FastAPI:
     application = FastAPI(
         title="岗位门槛分析系统 API",
         version="0.1.0",
+        responses=STANDARD_PROBLEM_RESPONSES,
     )
+    install_problem_handlers(application)
     application.add_middleware(
         CORSMiddleware,
         allow_origins=[settings.web_origin],
@@ -50,6 +57,7 @@ def create_app() -> FastAPI:
 
         return ReadinessResponse(status="ready", database="ok")
 
+    install_problem_openapi(application)
     return application
 
 

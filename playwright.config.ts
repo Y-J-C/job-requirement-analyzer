@@ -30,7 +30,7 @@ export default defineConfig({
   webServer: {
     command: "corepack pnpm dev:e2e",
     url: webUrl,
-    reuseExistingServer: true,
+    reuseExistingServer: false,
     timeout: 120_000,
   },
 });

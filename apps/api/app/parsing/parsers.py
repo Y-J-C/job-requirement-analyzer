@@ -5,8 +5,9 @@ from docx.opc.exceptions import PackageNotFoundError
 from pypdf import PdfReader
 from pypdf.errors import PdfReadError
 
-from app.parsing.contracts import DocumentParser
+from app.parsing.contracts import DocumentParser, ImageOcr
 from app.parsing.errors import DocumentError
+from app.parsing.pdf_ocr import extract_pdf_text_with_ocr
 from app.parsing.validation import DOCX_MEDIA_TYPE, MARKDOWN_MEDIA_TYPE, PDF_MEDIA_TYPE
 
 
@@ -76,7 +77,23 @@ def parse_document(
     *,
     max_chars: int,
     pdf_max_pages: int,
+    image_ocr: ImageOcr | None = None,
+    pdf_render_scale: float = 2,
+    pdf_ocr_max_page_pixels: int = 20_000_000,
+    pdf_ocr_max_total_pixels: int = 120_000_000,
 ) -> str:
+    if media_type == PDF_MEDIA_TYPE and image_ocr is not None:
+        return _normalize_text(
+            extract_pdf_text_with_ocr(
+                content,
+                image_ocr=image_ocr,
+                pdf_max_pages=pdf_max_pages,
+                render_scale=pdf_render_scale,
+                max_page_pixels=pdf_ocr_max_page_pixels,
+                max_total_pixels=pdf_ocr_max_total_pixels,
+            ),
+            max_chars=max_chars,
+        )
     parser = PARSERS.get(media_type)
     if parser is None:
         raise DocumentError("unsupported_file_type", "Unsupported file type")

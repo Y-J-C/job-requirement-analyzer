@@ -29,29 +29,53 @@ def create_ai_analysis_run(
     locked_job = session.scalar(
         select(JobPosting).where(JobPosting.id == job.id).with_for_update()
     )
+    run = enqueue_ai_analysis_run_locked(
+        session,
+        locked_job,
+        model_provider=model_provider,
+        model_name=model_name,
+        max_attempts=max_attempts,
+    )
+    if run is None:
+        return None
+    session.commit()
+    session.refresh(run)
+    return run
+
+
+def enqueue_ai_analysis_run_locked(
+    session: Session,
+    locked_job: JobPosting | None,
+    *,
+    model_provider: str,
+    model_name: str,
+    max_attempts: int,
+) -> AnalysisRun | None:
     if (
         locked_job is None
         or not locked_job.original_text.strip()
         or locked_job.status not in {
-        JobPostingStatus.DRAFT,
-        JobPostingStatus.FAILED,
-        JobPostingStatus.CONFIRMED,
+            JobPostingStatus.DRAFT,
+            JobPostingStatus.FAILED,
+            JobPostingStatus.CONFIRMED,
         }
     ):
         return None
     active_task = session.scalar(
         select(AnalysisRun.id).where(
-            AnalysisRun.job_posting_id == job.id,
+            AnalysisRun.job_posting_id == locked_job.id,
             AnalysisRun.status.in_([AnalysisRunStatus.PENDING, AnalysisRunStatus.RUNNING]),
         )
     )
     if active_task is not None:
         return None
     latest_version = session.scalar(
-        select(func.max(AnalysisRun.version)).where(AnalysisRun.job_posting_id == job.id)
+        select(func.max(AnalysisRun.version)).where(
+            AnalysisRun.job_posting_id == locked_job.id
+        )
     )
     run = AnalysisRun(
-        job_posting_id=job.id,
+        job_posting_id=locked_job.id,
         version=(latest_version or 0) + 1,
         status=AnalysisRunStatus.PENDING,
         source=AnalysisRunSource.AI,
@@ -63,8 +87,6 @@ def create_ai_analysis_run(
     )
     locked_job.status = JobPostingStatus.QUEUED
     session.add(run)
-    session.commit()
-    session.refresh(run)
     return run
 
 
@@ -150,6 +172,7 @@ def claim_next_analysis_run(
     request = AnalyzeJobRequest(
         company_name=job.company_name,
         job_title=job.job_title,
+        city=job.city,
         original_text=job.original_text,
     )
     session.commit()
@@ -176,6 +199,12 @@ def complete_analysis_run(
     if run is None:
         return
     job = session.get(JobPosting, run.job_posting_id)
+    if job is not None:
+        for field_name in ("company_name", "job_title", "city"):
+            if not getattr(job, field_name):
+                candidate = getattr(result, field_name)
+                if candidate:
+                    setattr(job, field_name, candidate)
     for extracted in result.requirements:
         session.add(
             RequirementItem(

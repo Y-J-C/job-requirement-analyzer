@@ -6,16 +6,26 @@ from tempfile import SpooledTemporaryFile
 from typing import BinaryIO
 from zipfile import BadZipFile, ZipFile
 
+from PIL import Image, UnidentifiedImageError
+
 from app.parsing.errors import DocumentError
 
 PDF_MEDIA_TYPE = "application/pdf"
 MARKDOWN_MEDIA_TYPE = "text/markdown"
 DOCX_MEDIA_TYPE = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+PNG_MEDIA_TYPE = "image/png"
+JPEG_MEDIA_TYPE = "image/jpeg"
+WEBP_MEDIA_TYPE = "image/webp"
+IMAGE_MEDIA_TYPES = frozenset({PNG_MEDIA_TYPE, JPEG_MEDIA_TYPE, WEBP_MEDIA_TYPE})
 ALLOWED_MIME_TYPES = {
     ".pdf": {PDF_MEDIA_TYPE, "application/octet-stream"},
     ".md": {MARKDOWN_MEDIA_TYPE, "text/plain", "application/octet-stream"},
     ".markdown": {MARKDOWN_MEDIA_TYPE, "text/plain", "application/octet-stream"},
     ".docx": {DOCX_MEDIA_TYPE, "application/octet-stream"},
+    ".png": {PNG_MEDIA_TYPE, "application/octet-stream"},
+    ".jpg": {JPEG_MEDIA_TYPE, "application/octet-stream"},
+    ".jpeg": {JPEG_MEDIA_TYPE, "application/octet-stream"},
+    ".webp": {WEBP_MEDIA_TYPE, "application/octet-stream"},
 }
 
 
@@ -27,6 +37,7 @@ class ValidatedUpload:
     size_bytes: int
     sha256: str
     content: BinaryIO
+    pixel_count: int | None = None
 
 
 def _safe_filename(filename: str) -> str:
@@ -84,6 +95,7 @@ def validate_upload(
     declared_mime_type: str | None,
     *,
     max_bytes: int,
+    max_image_pixels: int = 40_000_000,
 ) -> ValidatedUpload:
     safe_name = _safe_filename(filename)
     extension = PurePosixPath(safe_name).suffix.lower()
@@ -104,8 +116,9 @@ def validate_upload(
     content.seek(0)
 
     try:
-        prefix = content.read(8)
+        prefix = content.read(12)
         content.seek(0)
+        pixel_count: int | None = None
         if extension == ".pdf":
             if not prefix.startswith(b"%PDF-"):
                 raise DocumentError("file_signature_mismatch", "PDF signature does not match")
@@ -113,11 +126,54 @@ def validate_upload(
         elif extension in {".md", ".markdown"}:
             _validate_markdown(content)
             detected = MARKDOWN_MEDIA_TYPE
-        else:
+        elif extension == ".docx":
             if not prefix.startswith(b"PK"):
                 raise DocumentError("file_signature_mismatch", "DOCX signature does not match")
             _validate_docx(content)
             detected = DOCX_MEDIA_TYPE
+        else:
+            expected_signature = (
+                prefix.startswith(b"\x89PNG\r\n\x1a\n")
+                if extension == ".png"
+                else prefix.startswith(b"\xff\xd8\xff")
+                if extension in {".jpg", ".jpeg"}
+                else prefix.startswith(b"RIFF") and prefix[8:12] == b"WEBP"
+            )
+            if not expected_signature:
+                raise DocumentError(
+                    "file_signature_mismatch", "Image signature does not match"
+                )
+            try:
+                with Image.open(content) as image:
+                    pixel_count = image.width * image.height
+                    if pixel_count > max_image_pixels:
+                        raise DocumentError(
+                            "image_pixel_limit_exceeded", "Image exceeds the pixel limit"
+                        )
+                    detected = Image.MIME.get(image.format or "")
+                    image.verify()
+            except DocumentError:
+                raise
+            except (
+                Image.DecompressionBombError,
+                OSError,
+                SyntaxError,
+                UnidentifiedImageError,
+            ) as error:
+                raise DocumentError(
+                    "invalid_file_structure", "Image is invalid or damaged"
+                ) from error
+            finally:
+                content.seek(0)
+            if detected not in IMAGE_MEDIA_TYPES or detected != {
+                ".png": PNG_MEDIA_TYPE,
+                ".jpg": JPEG_MEDIA_TYPE,
+                ".jpeg": JPEG_MEDIA_TYPE,
+                ".webp": WEBP_MEDIA_TYPE,
+            }[extension]:
+                raise DocumentError(
+                    "file_signature_mismatch", "Image content does not match its extension"
+                )
     except Exception:
         content.close()
         raise
@@ -129,4 +185,24 @@ def validate_upload(
         size_bytes=size,
         sha256=digest.hexdigest(),
         content=content,
+        pixel_count=pixel_count,
     )
+
+
+def validate_image_batch(
+    uploads: list[ValidatedUpload],
+    *,
+    max_files: int,
+    max_total_bytes: int,
+    max_total_pixels: int,
+) -> None:
+    if not uploads or len(uploads) > max_files:
+        raise DocumentError("image_count_limit_exceeded", "Image count is outside the limit")
+    if any(upload.detected_media_type not in IMAGE_MEDIA_TYPES for upload in uploads):
+        raise DocumentError("unsupported_file_type", "Image batches may only contain images")
+    if sum(upload.size_bytes for upload in uploads) > max_total_bytes:
+        raise DocumentError("upload_total_too_large", "Image batch exceeds the size limit")
+    if sum(upload.pixel_count or 0 for upload in uploads) > max_total_pixels:
+        raise DocumentError(
+            "image_total_pixel_limit_exceeded", "Image batch exceeds the pixel limit"
+        )

@@ -18,10 +18,24 @@ class Settings(BaseSettings):
     s3_access_key: str = Field(default="job_analyzer", min_length=1)
     s3_secret_key: SecretStr = SecretStr("job_analyzer_local")
     upload_max_bytes: int = Field(default=10 * 1024 * 1024, ge=1, le=100 * 1024 * 1024)
+    image_max_files: int = Field(default=10, ge=1, le=10)
+    image_total_max_bytes: int = Field(
+        default=50 * 1024 * 1024, ge=1, le=100 * 1024 * 1024
+    )
+    image_max_pixels: int = Field(default=40_000_000, ge=1, le=100_000_000)
+    image_total_max_pixels: int = Field(default=120_000_000, ge=1, le=1_000_000_000)
     pdf_max_pages: int = Field(default=50, ge=1, le=500)
+    pdf_render_scale: float = Field(default=2, ge=1, le=4)
+    pdf_ocr_max_page_pixels: int = Field(default=20_000_000, ge=1, le=100_000_000)
+    pdf_ocr_max_total_pixels: int = Field(
+        default=120_000_000, ge=1, le=1_000_000_000
+    )
     extracted_text_max_chars: int = Field(default=100_000, ge=1_000, le=100_000)
     document_worker_lease_seconds: int = Field(default=120, ge=30, le=3600)
     document_worker_max_attempts: int = Field(default=3, ge=1, le=10)
+    clamav_host: str = "127.0.0.1"
+    clamav_port: int = Field(default=13310, ge=1, le=65535)
+    clamav_timeout_seconds: float = Field(default=30, ge=1, le=120)
     deepseek_api_key: SecretStr | None = None
     deepseek_base_url: str = "https://api.deepseek.com"
     deepseek_model: str = "deepseek-v4-flash"
@@ -72,6 +86,14 @@ class Settings(BaseSettings):
             raise ValueError("Value must contain at least 1 character")
         return normalized
 
+    @field_validator("clamav_host")
+    @classmethod
+    def require_local_clamav_endpoint(cls, value: str) -> str:
+        normalized = value.strip().lower()
+        if normalized not in {"127.0.0.1", "localhost", "::1"}:
+            raise ValueError("ClamAV must use a loopback endpoint")
+        return normalized
+
     @field_validator("deepseek_model")
     @classmethod
     def validate_deepseek_model(cls, value: str) -> str:
@@ -81,13 +103,18 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_worker_lease_covers_provider_attempts(self) -> Self:
+        if self.image_total_max_bytes < self.upload_max_bytes:
+            raise ValueError("Image batch byte limit must cover one uploaded file")
+        if self.image_total_max_pixels < self.image_max_pixels:
+            raise ValueError("Image batch pixel limit must cover one uploaded image")
+        if self.pdf_ocr_max_total_pixels < self.pdf_ocr_max_page_pixels:
+            raise ValueError("PDF total pixel limit must cover one rendered page")
         worst_case_seconds = self.deepseek_timeout_seconds * (
             self.deepseek_max_output_retries + 1
         )
         if self.analysis_worker_lease_seconds <= worst_case_seconds + 30:
             raise ValueError("Analysis worker lease must cover all provider attempts")
         return self
-
 
 @lru_cache
 def get_settings() -> Settings:

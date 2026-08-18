@@ -1,4 +1,9 @@
+import uuid
+
 from fastapi.testclient import TestClient
+from sqlalchemy import update
+
+from app.models.job_posting import JobPosting
 
 
 def create_job(client: TestClient) -> dict:
@@ -124,7 +129,25 @@ def test_confirm_empty_requirement_set_is_rejected(api_client: TestClient) -> No
     response = api_client.post(f"/api/v1/jobs/{job['id']}/confirm-requirements")
 
     assert response.status_code == 409
-    assert response.json() == {"detail": "Cannot confirm a job without requirements"}
+    assert response.headers["content-type"].startswith("application/problem+json")
+    assert response.json()["detail"] == "Cannot confirm a job without requirements"
+    assert response.json()["title"] == "Conflict"
+
+
+def test_confirm_requirements_is_rejected_when_job_metadata_is_missing(api_client) -> None:
+    job = create_job(api_client)
+    with api_client.app.state.testing_session_factory() as session:
+        session.execute(
+            update(JobPosting)
+            .where(JobPosting.id == uuid.UUID(job["id"]))
+            .values(company_name=None, job_title=None)
+        )
+        session.commit()
+    assert create_requirement(api_client, job["id"]).status_code == 201
+
+    response = api_client.post(f"/api/v1/jobs/{job['id']}/confirm-requirements")
+
+    assert response.status_code == 409
 
 
 def test_requirement_routes_validate_input_and_unknown_resources(

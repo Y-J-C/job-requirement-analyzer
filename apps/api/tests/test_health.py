@@ -34,4 +34,11 @@ def test_readiness_reports_service_unavailable_when_database_is_down(monkeypatch
     response = client.get("/health/ready")
 
     assert response.status_code == 503
-    assert response.json() == {"detail": "Database is unavailable"}
+    assert response.headers["content-type"].startswith("application/problem+json")
+    assert response.json() == {
+        "type": "about:blank",
+        "title": "Service Unavailable",
+        "status": 503,
+        "detail": "Database is unavailable",
+        "instance": "/health/ready",
+    }

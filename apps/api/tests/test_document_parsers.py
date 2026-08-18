@@ -2,6 +2,7 @@ from io import BytesIO
 
 import pytest
 from docx import Document
+from PIL import Image
 from pypdf import PdfWriter
 from pypdf.generic import DecodedStreamObject, DictionaryObject, NameObject
 
@@ -50,6 +51,21 @@ def make_docx() -> bytes:
     return output.getvalue()
 
 
+def make_scanned_pdf() -> bytes:
+    output = BytesIO()
+    Image.new("RGB", (320, 180), "white").save(output, format="PDF", resolution=72)
+    return output.getvalue()
+
+
+class RecordingImageOcr:
+    def __init__(self) -> None:
+        self.contents: list[bytes] = []
+
+    def extract_text(self, content: bytes) -> str:
+        self.contents.append(content)
+        return "扫描岗位\n熟练使用 SQL"
+
+
 def test_markdown_parser_preserves_markup_as_plain_text() -> None:
     text = parse_document(
         b"# JD\r\n<script>alert(1)</script>\r\nSQL",
@@ -76,6 +92,44 @@ def test_pdf_parser_extracts_text_layer() -> None:
     )
 
     assert text == "SQL required"
+
+
+def test_pdf_parser_renders_scanned_pages_for_ocr() -> None:
+    image_ocr = RecordingImageOcr()
+
+    text = parse_document(
+        make_scanned_pdf(),
+        PDF_MEDIA_TYPE,
+        max_chars=100_000,
+        pdf_max_pages=50,
+        image_ocr=image_ocr,
+        pdf_render_scale=2,
+        pdf_ocr_max_page_pixels=5_000_000,
+        pdf_ocr_max_total_pixels=10_000_000,
+    )
+
+    assert text == "扫描岗位\n熟练使用 SQL"
+    assert len(image_ocr.contents) == 1
+    assert image_ocr.contents[0].startswith(b"\x89PNG\r\n\x1a\n")
+
+
+def test_pdf_ocr_rejects_a_page_over_the_pixel_budget_before_rendering() -> None:
+    image_ocr = RecordingImageOcr()
+
+    with pytest.raises(DocumentError) as raised:
+        parse_document(
+            make_pdf(),
+            PDF_MEDIA_TYPE,
+            max_chars=100_000,
+            pdf_max_pages=50,
+            image_ocr=image_ocr,
+            pdf_render_scale=2,
+            pdf_ocr_max_page_pixels=100,
+            pdf_ocr_max_total_pixels=100,
+        )
+
+    assert raised.value.code == "pdf_render_pixel_limit_exceeded"
+    assert image_ocr.contents == []
 
 
 @pytest.mark.parametrize(

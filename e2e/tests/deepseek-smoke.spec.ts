@@ -14,21 +14,17 @@ test("@deepseek 真实模型可以完成提取、确认和汇总", async ({ page
   const jobTitle = "数据分析实习生";
   const jobsLoaded = page.waitForResponse((response) => (
     response.request().method() === "GET"
-    && response.url().endsWith(`/api/v1/target-roles/${role.id}/jobs`)
+    && response.url().includes(`/api/v1/target-roles/${role.id}/jobs?`)
   ));
   await page.goto(`/target-roles/${role.id}`);
   await jobsLoaded;
 
-  await page.getByLabel("公司名称").fill(companyName);
-  await page.getByLabel("岗位名称").fill(jobTitle);
-  await page.getByLabel("JD 原文").fill("岗位要求：熟练使用 SQL。");
-  await page.getByRole("button", { name: "保存岗位" }).click();
-  await page.getByRole("link", { name: "审核门槛 →" }).click();
+  await page.getByLabel("公司名称（可选提示）").fill(companyName);
+  await page.getByLabel("岗位名称（可选提示）").fill(jobTitle);
+  await page.getByLabel("岗位原文").fill("岗位要求：熟练使用 SQL。");
+  await page.getByRole("button", { name: "提交并自动分析" }).click();
+  await page.getByRole("link", { name: "审核指标与元数据 →" }).click({ timeout: 100_000 });
 
-  await page.getByRole("button", { name: "使用 DeepSeek 提取门槛" }).click();
-  await expect(page.getByRole("status").filter({
-    hasText: "提取完成。请逐条核对后确认整份岗位。",
-  })).toBeVisible({ timeout: 100_000 });
   await expect(page.getByRole("listitem").first()).toBeVisible();
 
   page.once("dialog", (dialog) => dialog.accept());
@@ -36,7 +32,7 @@ test("@deepseek 真实模型可以完成提取、确认和汇总", async ({ page
   await expect(page.getByText("已确认", { exact: true }).first()).toBeVisible();
 
   await page.getByRole("link", { name: "← 返回岗位方向" }).click();
-  await page.getByRole("link", { name: "查看确认汇总 →" }).click();
+  await page.getByRole("link", { name: "查看全部已确认岗位汇总 →" }).click();
   await expect(page.getByRole("heading", { name: `${role.name} · 确认汇总` })).toBeVisible();
   await expect(page.getByText("100%", { exact: true })).toBeVisible();
 });

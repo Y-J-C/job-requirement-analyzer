@@ -93,7 +93,8 @@ def test_upload_rejects_invalid_signature_before_storing(api_client: TestClient)
     )
 
     assert response.status_code == 422
-    assert response.json()["detail"]["code"] == "file_signature_mismatch"
+    assert response.headers["content-type"].startswith("application/problem+json")
+    assert response.json()["code"] == "file_signature_mismatch"
     assert store.objects == {}
 
 
@@ -115,7 +116,9 @@ def test_upload_hides_object_storage_failure(api_client: TestClient) -> None:
     response = upload_markdown(api_client, role["id"])
 
     assert response.status_code == 503
-    assert response.json() == {"detail": "File storage is unavailable"}
+    assert response.headers["content-type"].startswith("application/problem+json")
+    assert response.json()["detail"] == "File storage is unavailable"
+    assert response.json()["status"] == 503
 
 
 def test_delete_uploaded_job_removes_original_object(api_client: TestClient) -> None:

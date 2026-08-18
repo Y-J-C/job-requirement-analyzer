@@ -30,7 +30,7 @@ def api_client() -> Generator[TestClient, None, None]:
     with TestClient(app) as client:
         yield client
 
-    app.dependency_overrides.clear()
+    app.dependency_overrides.pop(get_session, None)
     del app.state.testing_session_factory
     Base.metadata.drop_all(engine)
     engine.dispose()

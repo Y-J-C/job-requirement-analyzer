@@ -49,19 +49,26 @@ def build_target_role_summary(
     target_role_id: uuid.UUID,
     target_role_name: str,
     requirement_type: RequirementType | None,
+    selected_job_ids: list[uuid.UUID] | None = None,
 ) -> TargetRoleSummaryResponse:
     job_condition = JobPosting.target_role_id == target_role_id
-    sample_job_count = (
-        session.scalar(select(func.count()).select_from(JobPosting).where(job_condition)) or 0
-    )
-    confirmed_job_count = (
-        session.scalar(
-            select(func.count())
-            .select_from(JobPosting)
-            .where(job_condition, JobPosting.active_analysis_run_id.is_not(None))
+    if selected_job_ids is None:
+        sample_job_count = (
+            session.scalar(select(func.count()).select_from(JobPosting).where(job_condition))
+            or 0
         )
-        or 0
-    )
+        confirmed_job_count = (
+            session.scalar(
+                select(func.count())
+                .select_from(JobPosting)
+                .where(job_condition, JobPosting.active_analysis_run_id.is_not(None))
+            )
+            or 0
+        )
+    else:
+        job_condition = JobPosting.id.in_(selected_job_ids)
+        sample_job_count = len(selected_job_ids)
+        confirmed_job_count = len(selected_job_ids)
 
     evidence_query = (
         select(RequirementItem, JobPosting)
@@ -69,6 +76,7 @@ def build_target_role_summary(
         .join(JobPosting, JobPosting.id == AnalysisRun.job_posting_id)
         .where(
             JobPosting.target_role_id == target_role_id,
+            job_condition,
             AnalysisRun.id == JobPosting.active_analysis_run_id,
             RequirementItem.user_confirmed.is_(True),
         )
@@ -140,5 +148,6 @@ def build_target_role_summary(
         sample_job_count=sample_job_count,
         confirmed_job_count=confirmed_job_count,
         sample_size_notice=sample_size_notice(confirmed_job_count),
+        selected_job_ids=selected_job_ids or [],
         items=items,
     )

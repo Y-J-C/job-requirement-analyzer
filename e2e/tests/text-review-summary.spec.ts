@@ -19,18 +19,15 @@ test("文本主流程可以审核确认并回溯汇总证据", async ({ page }) 
   await page.getByRole("button", { name: "创建目标方向" }).click();
   await page.getByRole("link", { name: roleName, exact: true }).click();
 
-  await page.getByLabel("公司名称").fill(companyName);
-  await page.getByLabel("岗位名称").fill(jobTitle);
-  await page.getByLabel("JD 原文").fill(originalText);
-  await page.getByRole("button", { name: "保存岗位" }).click();
+  await page.getByLabel("公司名称（可选提示）").fill(companyName);
+  await page.getByLabel("岗位名称（可选提示）").fill(jobTitle);
+  await page.getByLabel("岗位原文").fill(originalText);
+  await page.getByRole("button", { name: "提交并自动分析" }).click();
   await expect(page.getByRole("heading", { name: `${companyName} · ${jobTitle}` })).toBeVisible();
-  await page.getByRole("link", { name: "审核门槛 →" }).click();
+  await page.getByRole("link", { name: "审核指标与元数据 →" }).click({ timeout: 15_000 });
 
   await expect(page.getByRole("heading", { name: `${companyName} · ${jobTitle}` })).toBeVisible();
   await expect(page.getByText(originalText, { exact: true })).toBeVisible();
-  await page.getByLabel("标准条件名称").fill("SQL");
-  await page.getByLabel("原文依据").fill("熟练使用 SQL");
-  await page.getByRole("button", { name: "新增门槛" }).click();
   await expect(page.getByRole("heading", { name: "SQL", exact: true })).toBeVisible();
 
   await page.getByRole("button", { name: "编辑 SQL" }).click();
@@ -43,7 +40,7 @@ test("文本主流程可以审核确认并回溯汇总证据", async ({ page }) 
   await expect(page.getByText("已确认", { exact: true }).first()).toBeVisible();
 
   await page.getByRole("link", { name: "← 返回岗位方向" }).click();
-  await page.getByRole("link", { name: "查看确认汇总 →" }).click();
+  await page.getByRole("link", { name: "查看全部已确认岗位汇总 →" }).click();
   await expect(page.getByRole("heading", { name: `${roleName} · 确认汇总` })).toBeVisible();
   await expect(page.getByRole("heading", { name: "SQL 查询", exact: true })).toBeVisible();
   await expect(page.getByText("100%", { exact: true })).toBeVisible();

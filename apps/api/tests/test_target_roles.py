@@ -46,11 +46,24 @@ def test_list_target_roles_returns_total_and_newest_first(api_client: TestClient
     assert first["id"] != second["id"]
 
 
+def test_target_roles_are_shared_across_requests(api_client: TestClient) -> None:
+    first_role = create_target_role(api_client, name="第一个岗位方向").json()
+    second_role = create_target_role(api_client, name="第二个岗位方向").json()
+
+    listed = api_client.get("/api/v1/target-roles").json()
+
+    assert listed["total"] == 2
+    assert [item["id"] for item in listed["items"]] == [second_role["id"], first_role["id"]]
+    assert api_client.get(f"/api/v1/target-roles/{first_role['id']}").status_code == 200
+
+
 def test_get_unknown_target_role_returns_not_found(api_client: TestClient) -> None:
     response = api_client.get("/api/v1/target-roles/00000000-0000-0000-0000-000000000000")
 
     assert response.status_code == 404
-    assert response.json() == {"detail": "Target role not found"}
+    assert response.headers["content-type"].startswith("application/problem+json")
+    assert response.json()["detail"] == "Target role not found"
+    assert response.json()["status"] == 404
 
 
 def test_delete_unknown_target_role_returns_not_found(api_client: TestClient) -> None:
@@ -59,7 +72,9 @@ def test_delete_unknown_target_role_returns_not_found(api_client: TestClient) ->
     )
 
     assert response.status_code == 404
-    assert response.json() == {"detail": "Target role not found"}
+    assert response.headers["content-type"].startswith("application/problem+json")
+    assert response.json()["detail"] == "Target role not found"
+    assert response.json()["status"] == 404
 
 
 def test_create_target_role_rejects_blank_name(api_client: TestClient) -> None:

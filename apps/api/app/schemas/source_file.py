@@ -23,6 +23,7 @@ class SourceFileResponse(BaseModel):
 
     id: uuid.UUID
     job_posting_id: uuid.UUID
+    sequence_index: int
     original_filename: str
     declared_mime_type: str
     detected_media_type: str

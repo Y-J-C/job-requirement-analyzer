@@ -8,14 +8,19 @@ from sqlalchemy.orm import Session
 
 from app.models.job_posting import JobPosting, JobPostingStatus
 from app.models.source_file import SourceFile, SourceFileStatus
+from app.parsing.contracts import ImageOcr
 from app.parsing.errors import DocumentError
 from app.parsing.parsers import parse_document
-from app.parsing.validation import ValidatedUpload
+from app.parsing.validation import IMAGE_MEDIA_TYPES, ValidatedUpload
 from app.schemas.source_file import JobPostingUploadMetadata
+from app.security.malware import FileScanner, MalwareDetectedError
+from app.services.analysis import enqueue_ai_analysis_run_locked
 from app.storage.contracts import ObjectStore, StorageUnavailableError
 
 logger = logging.getLogger(__name__)
 PARSER_VERSION = "document-parser-v1"
+IMAGE_OCR_VERSION = "image-ocr-v1"
+SOURCE_TEXT_SEPARATOR = "\n\n"
 
 
 @dataclass(frozen=True)
@@ -76,7 +81,12 @@ def create_uploaded_job(
 
 
 def get_source_file(session: Session, job_id: uuid.UUID) -> SourceFile | None:
-    return session.scalar(select(SourceFile).where(SourceFile.job_posting_id == job_id))
+    return session.scalar(
+        select(SourceFile)
+        .where(SourceFile.job_posting_id == job_id)
+        .order_by(SourceFile.sequence_index.asc())
+        .limit(1)
+    )
 
 
 def recover_stale_source_files(session: Session, *, now: datetime) -> int:
@@ -158,30 +168,58 @@ def complete_source_file(
     source_file_id: uuid.UUID,
     worker_id: str,
     text: str,
+    parser_version: str,
     now: datetime,
+    model_provider: str,
+    model_name: str,
+    analysis_max_attempts: int,
 ) -> None:
-    source_file = session.scalar(
-        select(SourceFile)
-        .where(
-            SourceFile.id == source_file_id,
-            SourceFile.parse_status == SourceFileStatus.RUNNING,
-            SourceFile.worker_id == worker_id[:100],
-        )
+    claimed_source = session.get(SourceFile, source_file_id)
+    if claimed_source is None:
+        return
+    job = session.scalar(
+        select(JobPosting)
+        .where(JobPosting.id == claimed_source.job_posting_id)
         .with_for_update()
     )
-    if source_file is None:
-        return
-    job = session.get(JobPosting, source_file.job_posting_id)
     if job is None:
         return
-    job.original_text = text
-    job.status = JobPostingStatus.DRAFT
+    sources = list(
+        session.scalars(
+            select(SourceFile)
+            .where(SourceFile.job_posting_id == job.id)
+            .order_by(SourceFile.sequence_index.asc())
+            .with_for_update()
+        )
+    )
+    source_file = next((item for item in sources if item.id == source_file_id), None)
+    if (
+        source_file is None
+        or source_file.parse_status != SourceFileStatus.RUNNING
+        or source_file.worker_id != worker_id[:100]
+    ):
+        return
+    source_file.extracted_text = text
     source_file.parse_status = SourceFileStatus.SUCCEEDED
-    source_file.parser_version = PARSER_VERSION
+    source_file.parser_version = parser_version
     source_file.error_code = None
     source_file.completed_at = now
     source_file.lease_expires_at = None
     source_file.worker_id = None
+    if all(item.parse_status == SourceFileStatus.SUCCEEDED for item in sources):
+        texts = [item.extracted_text for item in sources]
+        if all(texts):
+            job.original_text = SOURCE_TEXT_SEPARATOR.join(text for text in texts if text)
+            job.status = JobPostingStatus.DRAFT
+            enqueue_ai_analysis_run_locked(
+                session,
+                job,
+                model_provider=model_provider,
+                model_name=model_name,
+                max_attempts=analysis_max_attempts,
+            )
+    elif any(item.parse_status == SourceFileStatus.FAILED for item in sources):
+        job.status = JobPostingStatus.FAILED
     session.commit()
 
 
@@ -234,17 +272,43 @@ def execute_claimed_source_file(
     retry_delay_seconds: int,
     max_chars: int,
     pdf_max_pages: int,
+    model_provider: str,
+    model_name: str,
+    analysis_max_attempts: int,
+    file_scanner: FileScanner,
+    image_ocr: ImageOcr | None = None,
+    pdf_render_scale: float = 2,
+    pdf_ocr_max_page_pixels: int = 20_000_000,
+    pdf_ocr_max_total_pixels: int = 120_000_000,
 ) -> None:
     try:
         content = store.read(claimed.object_key)
-        text = parse_document(
-            content,
-            claimed.detected_media_type,
-            max_chars=max_chars,
-            pdf_max_pages=pdf_max_pages,
-        )
+        file_scanner.scan(content)
+        if claimed.detected_media_type in IMAGE_MEDIA_TYPES:
+            if image_ocr is None:
+                raise DocumentError("image_ocr_unavailable", "Image OCR is unavailable")
+            text = image_ocr.extract_text(content)
+            parser_version = IMAGE_OCR_VERSION
+        else:
+            text = parse_document(
+                content,
+                claimed.detected_media_type,
+                max_chars=max_chars,
+                pdf_max_pages=pdf_max_pages,
+                image_ocr=image_ocr,
+                pdf_render_scale=pdf_render_scale,
+                pdf_ocr_max_page_pixels=pdf_ocr_max_page_pixels,
+                pdf_ocr_max_total_pixels=pdf_ocr_max_total_pixels,
+            )
+            parser_version = PARSER_VERSION
     except StorageUnavailableError:
         error_code, retryable = "storage_unavailable", True
+    except MalwareDetectedError as error:
+        error_code, retryable = error.code, error.retryable
+        try:
+            store.delete(claimed.object_key)
+        except StorageUnavailableError:
+            logger.error("Could not remove quarantined object after malware detection")
     except DocumentError as error:
         error_code, retryable = error.code, error.retryable
     except Exception:
@@ -256,7 +320,11 @@ def execute_claimed_source_file(
                 source_file_id=claimed.source_file_id,
                 worker_id=worker_id,
                 text=text,
+                parser_version=parser_version,
                 now=now or datetime.now(UTC),
+                model_provider=model_provider,
+                model_name=model_name,
+                analysis_max_attempts=analysis_max_attempts,
             )
         return
     with session_factory() as session:

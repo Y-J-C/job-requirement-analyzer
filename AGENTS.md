@@ -10,7 +10,7 @@ This pnpm workspace contains a Next.js frontend and FastAPI backend.
 - `apps/api/tests/`: pytest unit tests; infrastructure-dependent cases live in `tests/integration/`.
 - `apps/api/migrations/`: Alembic migrations. Never edit an applied migration; add a new revision.
 - `docs/`: approved feature specifications, implementation plans, and architecture decisions.
-- `docker-compose.yml`: local PostgreSQL and MinIO services.
+- `docker-compose.yml`: local PostgreSQL, MinIO, and ClamAV services.
 
 The nested `apps/web/AGENTS.md` contains additional Next.js instructions.
 
@@ -19,12 +19,13 @@ The nested `apps/web/AGENTS.md` contains additional Next.js instructions.
 Run commands from the repository root in Windows PowerShell:
 
 - `pnpm install`: install workspace dependencies.
-- `pnpm db:up`: start PostgreSQL and MinIO.
+- `pnpm db:up`: start PostgreSQL, MinIO, and ClamAV.
 - `pnpm api:migrate`: apply database migrations.
 - `pnpm dev`: run Web (`:3001`), API (`:8000`), and the worker together.
 - `pnpm lint`: run ESLint and Ruff.
 - `pnpm test`: run Vitest and pytest unit suites.
-- `pnpm test:api:integration`: test real PostgreSQL/MinIO connections; infrastructure must be running.
+- `pnpm test:api:integration`: test real PostgreSQL/MinIO connections.
+- `pnpm test:api:security-integration`: verify real ClamAV clean/EICAR behavior.
 - `pnpm build`: build Next.js and compile-check Python modules.
 
 ## Coding Style & Naming Conventions
@@ -42,3 +43,4 @@ Recent commits use short, outcome-oriented subjects, usually in Chinese, such as
 ## Security & Configuration
 
 Copy `.env.example` to the ignored `.env`. Never commit API keys, tokens, uploaded documents, or production data. Validate uploads at the API boundary and preserve storage/database cleanup behavior when changing file workflows.
+The application has no built-in authentication and shares one dataset per deployment. Keep it on a trusted network or add access control at the reverse proxy before exposing it publicly.

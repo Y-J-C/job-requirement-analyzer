@@ -1,10 +1,12 @@
+from base64 import b64decode
 from io import BytesIO
 from zipfile import ZIP_DEFLATED, ZipFile
 
 import pytest
+from PIL import Image
 
 from app.parsing.errors import DocumentError
-from app.parsing.validation import validate_upload
+from app.parsing.validation import validate_image_batch, validate_upload
 
 
 class NoUnboundedRead(BytesIO):
@@ -21,6 +23,12 @@ def make_docx(*, oversized_compressed_entry: bool = False) -> bytes:
         archive.writestr("word/document.xml", "<document />")
         if oversized_compressed_entry:
             archive.writestr("word/media/filler.bin", b"0" * 2_000_000)
+    return output.getvalue()
+
+
+def make_image(format_name: str, *, size: tuple[int, int] = (32, 24)) -> bytes:
+    output = BytesIO()
+    Image.new("RGB", size, "white").save(output, format=format_name)
     return output.getvalue()
 
 
@@ -118,3 +126,98 @@ def test_validate_upload_rejects_docx_zip_bomb_ratio() -> None:
         )
 
     assert raised.value.code == "invalid_file_structure"
+
+
+@pytest.mark.parametrize(
+    ("filename", "mime_type", "format_name", "expected_media_type"),
+    [
+        ("岗位.png", "image/png", "PNG", "image/png"),
+        ("岗位.jpg", "image/jpeg", "JPEG", "image/jpeg"),
+        ("岗位.webp", "image/webp", "WEBP", "image/webp"),
+    ],
+)
+def test_validate_upload_detects_supported_images(
+    filename: str,
+    mime_type: str,
+    format_name: str,
+    expected_media_type: str,
+) -> None:
+    result = validate_upload(
+        BytesIO(make_image(format_name)),
+        filename,
+        mime_type,
+        max_bytes=10_000,
+        max_image_pixels=1_000,
+    )
+
+    assert result.detected_media_type == expected_media_type
+    assert result.pixel_count == 32 * 24
+
+
+def test_validate_upload_rejects_an_image_with_a_spoofed_extension() -> None:
+    with pytest.raises(DocumentError) as raised:
+        validate_upload(
+            BytesIO(make_image("PNG")),
+            "岗位.jpg",
+            "image/jpeg",
+            max_bytes=10_000,
+            max_image_pixels=1_000,
+        )
+
+    assert raised.value.code == "file_signature_mismatch"
+
+
+def test_validate_upload_rejects_an_image_over_the_pixel_limit() -> None:
+    with pytest.raises(DocumentError) as raised:
+        validate_upload(
+            BytesIO(make_image("PNG", size=(40, 30))),
+            "岗位.png",
+            "image/png",
+            max_bytes=10_000,
+            max_image_pixels=1_000,
+        )
+
+    assert raised.value.code == "image_pixel_limit_exceeded"
+
+
+def test_validate_upload_rejects_png_with_a_broken_chunk_checksum() -> None:
+    damaged = b64decode(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/"
+        "x8AAusB9Y9Zl1sAAAAASUVORK5CYII="
+    )
+
+    with pytest.raises(DocumentError) as raised:
+        validate_upload(
+            BytesIO(damaged),
+            "损坏.png",
+            "image/png",
+            max_bytes=10_000,
+            max_image_pixels=1_000,
+        )
+
+    assert raised.value.code == "invalid_file_structure"
+
+
+def test_validate_image_batch_enforces_count_type_and_total_limits() -> None:
+    images = [
+        validate_upload(
+            BytesIO(make_image("PNG")),
+            f"岗位-{index}.png",
+            "image/png",
+            max_bytes=10_000,
+            max_image_pixels=1_000,
+        )
+        for index in range(2)
+    ]
+
+    validate_image_batch(images, max_files=2, max_total_bytes=20_000, max_total_pixels=2_000)
+    with pytest.raises(DocumentError, match="count") as count_error:
+        validate_image_batch(images, max_files=1, max_total_bytes=20_000, max_total_pixels=2_000)
+    with pytest.raises(DocumentError) as bytes_error:
+        validate_image_batch(images, max_files=2, max_total_bytes=1, max_total_pixels=2_000)
+    with pytest.raises(DocumentError) as pixels_error:
+        validate_image_batch(images, max_files=2, max_total_bytes=20_000, max_total_pixels=1)
+
+    assert count_error.value.code == "image_count_limit_exceeded"
+    assert bytes_error.value.code == "upload_total_too_large"
+    assert pixels_error.value.code == "image_total_pixel_limit_exceeded"

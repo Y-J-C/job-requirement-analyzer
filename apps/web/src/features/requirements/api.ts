@@ -1,4 +1,5 @@
 import type { JobPosting } from "@/features/job-postings/types";
+import { apiClient, requireData, requireSuccess } from "@/lib/api-client";
 
 import type {
   AnalysisRun,
@@ -8,20 +9,11 @@ import type {
 } from "./types";
 
 
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
-
-
-async function parseResponse<T>(response: Response): Promise<T> {
-  if (!response.ok) throw new Error(`Request failed with status ${response.status}`);
-  return response.json() as Promise<T>;
-}
-
-
 export async function fetchRequirements(jobId: string): Promise<RequirementListResponse> {
-  const response = await fetch(`${apiBaseUrl}/api/v1/jobs/${jobId}/requirements`, {
+  return requireData(await apiClient.GET("/api/v1/jobs/{job_id}/requirements", {
     cache: "no-store",
-  });
-  return parseResponse<RequirementListResponse>(response);
+    params: { path: { job_id: jobId } },
+  }));
 }
 
 
@@ -29,12 +21,10 @@ export async function createRequirement(
   jobId: string,
   input: RequirementInput,
 ): Promise<RequirementItem> {
-  const response = await fetch(`${apiBaseUrl}/api/v1/jobs/${jobId}/requirements`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(input),
-  });
-  return parseResponse<RequirementItem>(response);
+  return requireData(await apiClient.POST("/api/v1/jobs/{job_id}/requirements", {
+    params: { path: { job_id: jobId } },
+    body: input,
+  }));
 }
 
 
@@ -42,50 +32,46 @@ export async function updateRequirement(
   requirementId: string,
   input: RequirementInput,
 ): Promise<RequirementItem> {
-  const response = await fetch(`${apiBaseUrl}/api/v1/requirements/${requirementId}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(input),
-  });
-  return parseResponse<RequirementItem>(response);
+  return requireData(await apiClient.PATCH("/api/v1/requirements/{requirement_id}", {
+    params: { path: { requirement_id: requirementId } },
+    body: input,
+  }));
 }
 
 
 export async function deleteRequirement(requirementId: string): Promise<void> {
-  const response = await fetch(`${apiBaseUrl}/api/v1/requirements/${requirementId}`, {
-    method: "DELETE",
+  const result = await apiClient.DELETE("/api/v1/requirements/{requirement_id}", {
+    params: { path: { requirement_id: requirementId } },
   });
-  if (!response.ok) throw new Error(`Request failed with status ${response.status}`);
+  requireSuccess(result);
 }
 
 
 export async function confirmRequirements(jobId: string): Promise<JobPosting> {
-  const response = await fetch(`${apiBaseUrl}/api/v1/jobs/${jobId}/confirm-requirements`, {
-    method: "POST",
-  });
-  return parseResponse<JobPosting>(response);
+  return requireData(await apiClient.POST("/api/v1/jobs/{job_id}/confirm-requirements", {
+    params: { path: { job_id: jobId } },
+  }));
 }
 
 
 export async function startAnalysis(jobId: string): Promise<AnalysisRun> {
-  const response = await fetch(`${apiBaseUrl}/api/v1/jobs/${jobId}/analyze`, {
-    method: "POST",
-  });
-  return parseResponse<AnalysisRun>(response);
+  return requireData(await apiClient.POST("/api/v1/jobs/{job_id}/analyze", {
+    params: { path: { job_id: jobId } },
+  }));
 }
 
 
 export async function fetchAnalysisRun(runId: string): Promise<AnalysisRun> {
-  const response = await fetch(`${apiBaseUrl}/api/v1/analysis-runs/${runId}`, {
+  return requireData(await apiClient.GET("/api/v1/analysis-runs/{run_id}", {
     cache: "no-store",
-  });
-  return parseResponse<AnalysisRun>(response);
+    params: { path: { run_id: runId } },
+  }));
 }
 
 
 export async function fetchLatestAnalysisRun(jobId: string): Promise<AnalysisRun> {
-  const response = await fetch(`${apiBaseUrl}/api/v1/jobs/${jobId}/analysis-runs/latest`, {
+  return requireData(await apiClient.GET("/api/v1/jobs/{job_id}/analysis-runs/latest", {
     cache: "no-store",
-  });
-  return parseResponse<AnalysisRun>(response);
+    params: { path: { job_id: jobId } },
+  }));
 }

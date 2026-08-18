@@ -1,6 +1,6 @@
 import uuid
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 
 from app.models.requirement_item import RequirementExplicitness, RequirementType
 
@@ -31,4 +31,16 @@ class TargetRoleSummaryResponse(BaseModel):
     sample_job_count: int
     confirmed_job_count: int
     sample_size_notice: str
+    selected_job_ids: list[uuid.UUID] = Field(default_factory=list)
     items: list[RequirementSummaryItemResponse]
+
+
+class SelectedSummaryRequest(BaseModel):
+    job_ids: list[uuid.UUID] = Field(min_length=2, max_length=500)
+
+    @field_validator("job_ids")
+    @classmethod
+    def require_unique_job_ids(cls, value: list[uuid.UUID]) -> list[uuid.UUID]:
+        if len(set(value)) != len(value):
+            raise ValueError("job_ids must be unique")
+        return value

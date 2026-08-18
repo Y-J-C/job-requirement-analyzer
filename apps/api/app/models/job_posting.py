@@ -54,8 +54,8 @@ class JobPosting(Base):
         ForeignKey("target_roles.id", ondelete="CASCADE"),
         index=True,
     )
-    company_name: Mapped[str] = mapped_column(String(100))
-    job_title: Mapped[str] = mapped_column(String(150))
+    company_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    job_title: Mapped[str | None] = mapped_column(String(150), nullable=True)
     recruitment_stage: Mapped[RecruitmentStage] = mapped_column(
         SqlEnum(
             RecruitmentStage,

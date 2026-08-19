@@ -36,7 +36,8 @@ describe("TargetRoleDashboard", () => {
 
     render(<TargetRoleDashboard />);
 
-    expect(await screen.findByText("还没有目标岗位方向")).toBeTruthy();
+    expect(await screen.findByText("暂无方向")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "新建方向" }));
 
     fireEvent.change(screen.getByLabelText("方向名称"), {
       target: { value: "数据分析实习生" },
@@ -44,10 +45,11 @@ describe("TargetRoleDashboard", () => {
     fireEvent.change(screen.getByLabelText("招聘阶段"), {
       target: { value: "daily_internship" },
     });
-    fireEvent.change(screen.getByLabelText("说明（可选）"), {
+    fireEvent.click(screen.getByText("添加说明"));
+    fireEvent.change(screen.getByLabelText("说明"), {
       target: { value: "关注互联网公司的数据岗位" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "创建目标方向" }));
+    fireEvent.click(screen.getByRole("button", { name: "创建方向" }));
 
     const roleHeading = await screen.findByRole("heading", { name: "数据分析实习生" });
     const roleItem = roleHeading.closest("li");
@@ -77,7 +79,7 @@ describe("TargetRoleDashboard", () => {
     fireEvent.click(screen.getByRole("button", { name: "重新加载" }));
 
     await waitFor(() => {
-      expect(screen.getByText("还没有目标岗位方向")).toBeTruthy();
+      expect(screen.getByText("暂无方向")).toBeTruthy();
     });
   });
 });

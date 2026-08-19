@@ -200,8 +200,8 @@ export function JobPostingDashboard({ roleId }: { roleId: string }) {
   return (
     <main className="shell role-detail">
       <nav className="page-nav" aria-label="页面导航">
-        <Link className="back-link" href="/">← 返回目标方向</Link>
-        <Link className="summary-link" href={`/target-roles/${roleId}/summary`}>查看全部已确认岗位汇总 →</Link>
+        <Link className="back-link" href="/">返回方向</Link>
+        <Link className="summary-link" href={`/target-roles/${roleId}/summary`}>查看汇总</Link>
       </nav>
       <header className="detail-header">
         <p className="eyebrow">{recruitmentStageLabels[role.recruitment_stage]}</p>
@@ -212,11 +212,10 @@ export function JobPostingDashboard({ roleId }: { roleId: string }) {
       {error ? <p className="form-error" role="alert">{error}</p> : null}
       <div className="role-workspace">
         <section className="intake-section" aria-labelledby="add-job-heading">
-          <p className="section-index">01 / 录入</p>
           <h2 id="add-job-heading">添加岗位来源</h2>
           <p className="section-intro">公司与岗位名可留空，系统会尝试从原文中识别。</p>
           <details className="intake-disclosure" open>
-            <summary>展开或收起录入表单</summary>
+            <summary>录入岗位</summary>
             <JobPostingForm defaultStage={role.recruitment_stage} onIntake={handleIntake} />
           </details>
         </section>
@@ -224,7 +223,6 @@ export function JobPostingDashboard({ roleId }: { roleId: string }) {
         <section className="job-section" aria-labelledby="job-list-heading">
           <div className="list-heading">
             <div>
-              <p className="section-index">02 / 岗位记录</p>
               <h2 id="job-list-heading">选择样本并分析</h2>
             </div>
             <span>{jobs.length} 个岗位</span>

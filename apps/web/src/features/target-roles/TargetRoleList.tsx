@@ -1,3 +1,4 @@
+import { CaretRightIcon } from "@phosphor-icons/react/dist/csr/CaretRight";
 import Link from "next/link";
 
 import { recruitmentStageLabels, type TargetRole } from "./types";
@@ -28,24 +29,19 @@ export function TargetRoleList({ roles, isLoading, loadError, onRetry }: TargetR
   }
 
   if (roles.length === 0) {
-    return (
-      <div className="list-state" role="status">
-        <h3>还没有目标岗位方向</h3>
-        <p>先创建一个方向，再向其中添加具体招聘岗位。</p>
-      </div>
-    );
+    return <p className="list-state" role="status">暂无方向</p>;
   }
 
   return (
     <ul className="role-list">
       {roles.map((role) => (
         <li key={role.id}>
-          <div>
-            <p className="role-stage">{recruitmentStageLabels[role.recruitment_stage]}</p>
-            <h3><Link href={`/target-roles/${role.id}`}>{role.name}</Link></h3>
-            {role.description ? <p>{role.description}</p> : null}
-          </div>
-          <span className="job-count">{role.job_count} 个岗位</span>
+          <Link className="role-row" href={`/target-roles/${role.id}`}>
+            <h3>{role.name}</h3>
+            <span className="role-stage">{recruitmentStageLabels[role.recruitment_stage]}</span>
+            <span className="job-count">{role.job_count} 个岗位</span>
+            <CaretRightIcon className="role-row-caret" aria-hidden="true" size={20} />
+          </Link>
         </li>
       ))}
     </ul>

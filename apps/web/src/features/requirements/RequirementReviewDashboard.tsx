@@ -205,8 +205,8 @@ export function RequirementReviewDashboard({ jobId }: { jobId: string }) {
   return (
     <main className="shell review-page">
       <nav className="page-nav" aria-label="页面导航">
-        <Link className="back-link" href={`/target-roles/${job.target_role_id}`}>← 返回岗位方向</Link>
-        <span>原文 → AI 草稿 → 人工确认</span>
+        <Link className="back-link" href={`/target-roles/${job.target_role_id}`}>返回岗位</Link>
+        <span>人工审核</span>
       </nav>
       <header className="detail-header review-header">
         <div>
@@ -225,7 +225,6 @@ export function RequirementReviewDashboard({ jobId }: { jobId: string }) {
       <section className="metadata-section" aria-labelledby="job-metadata-heading">
         <div className="section-heading-row">
           <div>
-            <p className="section-index">01 / 基础信息</p>
             <h2 id="job-metadata-heading">岗位信息</h2>
           </div>
           <p>用于识别样本与回溯来源</p>
@@ -238,7 +237,6 @@ export function RequirementReviewDashboard({ jobId }: { jobId: string }) {
 
       <div className="review-workspace">
         <aside className="source-panel" aria-labelledby="source-heading">
-          <p className="section-index">02 / 证据底稿</p>
           <h2 id="source-heading">岗位原文</h2>
           <pre>{job.original_text}</pre>
         </aside>
@@ -246,7 +244,6 @@ export function RequirementReviewDashboard({ jobId }: { jobId: string }) {
         <div className="review-panel">
           <section className="analysis-action" aria-labelledby="ai-analysis-heading">
             <div>
-              <p className="section-index">03 / 提取与审核</p>
               <h2 id="ai-analysis-heading">DeepSeek 原子要求提取</h2>
               <p>模型只生成待审核草稿；系统会校验每条依据确实存在于岗位原文。</p>
             </div>

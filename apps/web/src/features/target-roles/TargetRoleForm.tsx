@@ -70,23 +70,24 @@ export function TargetRoleForm({ onCreate }: TargetRoleFormProps) {
       </div>
 
       <div className="field field-wide">
-        <label htmlFor="role-description">说明（可选）</label>
-        <textarea
-          id="role-description"
-          name="description"
-          maxLength={2000}
-          rows={3}
-          placeholder="记录岗位边界、关注行业或样本范围"
-        />
+        <details className="form-optional">
+          <summary>添加说明</summary>
+          <label htmlFor="role-description">说明</label>
+          <textarea
+            id="role-description"
+            name="description"
+            maxLength={2000}
+            rows={3}
+          />
+        </details>
       </div>
 
       <div className="form-actions field-wide">
         {error ? <p className="form-error" role="alert">{error}</p> : <span />}
         <button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? "正在创建…" : "创建目标方向"}
+          {isSubmitting ? "创建中…" : "创建方向"}
         </button>
       </div>
     </form>
   );
 }
-

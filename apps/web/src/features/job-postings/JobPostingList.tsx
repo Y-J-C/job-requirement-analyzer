@@ -42,12 +42,7 @@ export function JobPostingList({
   onDelete,
 }: JobPostingListProps) {
   if (jobs.length === 0) {
-    return (
-      <div className="list-state" role="status">
-        <h3>还没有录入岗位</h3>
-        <p>粘贴文本、上传文档或图片，系统会自动提取并分析。</p>
-      </div>
-    );
+    return <p className="list-state" role="status">暂无岗位</p>;
   }
 
   return (

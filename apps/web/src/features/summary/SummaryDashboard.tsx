@@ -59,8 +59,8 @@ export function SummaryDashboard({ roleId }: { roleId: string }) {
   return (
     <main className="shell summary-page">
       <nav className="page-nav" aria-label="页面导航">
-        <Link className="back-link" href={`/target-roles/${roleId}`}>← 返回岗位方向</Link>
-        <span>仅使用人工确认的数据</span>
+        <Link className="back-link" href={`/target-roles/${roleId}`}>返回岗位</Link>
+        <span>已确认数据</span>
       </nav>
       <header className="detail-header">
         <p className="eyebrow">确定性事实汇总</p>
@@ -77,7 +77,6 @@ export function SummaryDashboard({ roleId }: { roleId: string }) {
       <section className="summary-results" aria-labelledby="summary-results-heading">
         <div className="summary-toolbar">
           <div>
-            <p className="section-index">按岗位去重统计</p>
             <h2 id="summary-results-heading">要求覆盖率</h2>
             <p>同名条件在不同要求类型下分别统计。</p>
           </div>

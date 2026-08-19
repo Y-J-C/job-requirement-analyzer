@@ -1,5 +1,6 @@
 "use client";
 
+import { PlusIcon } from "@phosphor-icons/react/dist/csr/Plus";
 import { useEffect, useState } from "react";
 
 import { createTargetRole, fetchTargetRoles } from "./api";
@@ -12,6 +13,7 @@ export function TargetRoleDashboard() {
   const [roles, setRoles] = useState<TargetRole[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
 
   async function loadRoles() {
     setIsLoading(true);
@@ -51,42 +53,67 @@ export function TargetRoleDashboard() {
     };
   }, []);
 
+  useEffect(() => {
+    function openCreateFromHash() {
+      if (window.location.hash === "#new-direction") {
+        setIsCreateOpen(true);
+      }
+    }
+
+    function openCreate() {
+      setIsCreateOpen(true);
+    }
+
+    openCreateFromHash();
+    window.addEventListener("hashchange", openCreateFromHash);
+    window.addEventListener("open-new-direction", openCreate);
+    return () => {
+      window.removeEventListener("hashchange", openCreateFromHash);
+      window.removeEventListener("open-new-direction", openCreate);
+    };
+  }, []);
+
   async function handleCreate(input: CreateTargetRoleInput) {
     const createdRole = await createTargetRole(input);
     setRoles((currentRoles) => [createdRole, ...currentRoles]);
+    setIsCreateOpen(false);
   }
 
   return (
-    <section className="workspace" aria-labelledby="target-role-heading">
-      <div className="workspace-heading">
-        <div>
-          <p className="section-label">目标岗位方向</p>
-          <h2 id="target-role-heading">从一个清晰方向开始</h2>
-        </div>
-        <p>同一方向只收集职责与能力结构相近的岗位，避免汇总结果失真。</p>
-      </div>
-
-      <div className="direction-workspace">
-        <div className="direction-create">
-          <p className="section-index">01 / 新建方向</p>
-          <TargetRoleForm onCreate={handleCreate} />
-        </div>
-        <div className="direction-list">
-          <div className="list-heading">
-            <div>
-              <p className="section-index">02 / 继续研究</p>
-              <h2>已创建的方向</h2>
-            </div>
-            <span>{roles.length} 个</span>
+    <section className="direction-dashboard" aria-label="目标岗位方向">
+      <section className="direction-create" id="new-direction" aria-label="新建方向">
+        <button
+          className="primary-create-button"
+          type="button"
+          aria-expanded={isCreateOpen}
+          aria-controls="direction-create-form"
+          onClick={() => setIsCreateOpen((current) => !current)}
+        >
+          {!isCreateOpen ? <PlusIcon aria-hidden="true" size={22} weight="bold" /> : null}
+          {isCreateOpen ? "收起" : "新建方向"}
+        </button>
+        {isCreateOpen ? (
+          <div id="direction-create-form">
+            <TargetRoleForm onCreate={handleCreate} />
           </div>
+        ) : null}
+      </section>
+
+      <section className="direction-list" id="directions" aria-labelledby="target-role-heading">
+        <h2 id="target-role-heading">已有方向</h2>
+        <div className="role-list-columns" aria-hidden="true">
+          <span>方向名称</span>
+          <span>招聘阶段</span>
+          <span>包含岗位</span>
+          <span />
+        </div>
           <TargetRoleList
             roles={roles}
             isLoading={isLoading}
             loadError={loadError}
             onRetry={() => void loadRoles()}
           />
-        </div>
-      </div>
+      </section>
     </section>
   );
 }

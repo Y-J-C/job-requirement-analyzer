@@ -95,8 +95,8 @@ describe("JobPostingDashboard", () => {
 
     render(<JobPostingDashboard roleId={role.id} />);
     expect(await screen.findByRole("heading", { name: role.name })).toBeTruthy();
-    expect(screen.getByText("01 / 录入")).toBeTruthy();
-    expect(screen.getByText("02 / 岗位记录")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "添加岗位来源" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "选择样本并分析" })).toBeTruthy();
     fireEvent.change(screen.getByLabelText("公司名称（可选提示）"), { target: { value: "示例科技" } });
     fireEvent.change(screen.getByLabelText("岗位名称（可选提示）"), { target: { value: "数据分析实习生" } });
     fireEvent.change(screen.getByLabelText("岗位原文"), { target: { value: job.original_text } });

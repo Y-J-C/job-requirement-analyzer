@@ -1,36 +1,36 @@
 :root {
-  --background: #f2eee4;
-  --surface: #fffdf8;
-  --surface-muted: #e9e4d8;
-  --text: #15231e;
-  --muted: #5e6862;
-  --line: #c9ccc3;
-  --line-strong: #8d978f;
-  --accent: #17664f;
-  --accent-dark: #103f32;
-  --highlight: #bd543b;
-  --danger: #9a3428;
-  --radius: 0.375rem;
-  --shadow-soft: 0 0.75rem 2rem rgb(21 35 30 / 7%);
+  --background: #f6f7f4;
+  --surface: #ffffff;
+  --surface-muted: #edf1ed;
+  --text: #17231e;
+  --muted: #596760;
+  --line: #d6ddd8;
+  --line-strong: #a8b3ac;
+  --accent: #147354;
+  --accent-dark: #0c4d3a;
+  --accent-soft: #e3f1eb;
+  --danger: #a13d30;
+  --radius: 0.625rem;
+  --shadow-soft: 0 0.75rem 2rem rgb(28 55 44 / 6%);
 }
 
-.app-header {
-  position: sticky;
+.app-frame {
+  min-height: 100vh;
+}
+
+.app-sidebar {
+  position: fixed;
   z-index: 20;
-  top: 0;
-  color: #f8f4e9;
-  background: var(--accent-dark);
-  border-bottom: 1px solid rgb(255 255 255 / 14%);
+  inset: 0 auto 0 0;
+  width: 17.5rem;
+  padding: 2rem 1.5rem;
+  background: var(--surface);
+  border-right: 1px solid var(--line);
 }
 
-.app-header-inner {
-  display: grid;
-  grid-template-columns: minmax(12rem, auto) 1fr;
-  gap: 2rem;
-  align-items: center;
-  width: min(100% - 3rem, 78rem);
-  min-height: 4.25rem;
-  margin: 0 auto;
+.app-content {
+  min-width: 0;
+  margin-left: 17.5rem;
 }
 
 .app-brand {
@@ -44,50 +44,43 @@
 
 .app-brand-mark {
   display: grid;
-  width: 2rem;
-  height: 2rem;
+  width: 2.75rem;
+  height: 2.75rem;
   place-items: center;
-  color: #fffaf0;
-  background: var(--highlight);
-  border-radius: 50%;
-  font-family: "Songti SC", STSong, Georgia, serif;
+  color: #ffffff;
+  background: var(--accent-dark);
+  border-radius: var(--radius);
   font-weight: 700;
 }
 
-.app-brand-copy {
-  display: grid;
-  line-height: 1.1;
-}
-
-.app-brand-copy strong {
-  font-family: "Songti SC", STSong, Georgia, serif;
-  font-size: 1.1rem;
-  letter-spacing: 0.04em;
-}
-
-.app-brand-copy small {
-  margin-top: 0.25rem;
-  color: rgb(248 244 233 / 68%);
-  font-size: 0.6875rem;
-  letter-spacing: 0.05em;
+.app-brand strong {
+  font-size: 1.125rem;
+  letter-spacing: 0.01em;
 }
 
 .app-navigation {
-  display: flex;
-  gap: 1.5rem;
-  align-items: center;
-  justify-content: flex-end;
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 3rem;
 }
 
 .app-navigation a {
-  color: rgb(248 244 233 / 78%);
-  font-size: 0.8125rem;
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  min-height: 3rem;
+  padding: 0.75rem 1rem;
+  color: var(--muted);
+  border-radius: var(--radius);
+  font-size: 0.9375rem;
   font-weight: 700;
   text-decoration: none;
 }
 
-.app-navigation a:hover {
-  color: #ffffff;
+.app-navigation a:hover,
+.app-navigation a[aria-current="page"] {
+  color: var(--accent-dark);
+  background: var(--accent-soft);
 }
 
 * {
@@ -96,14 +89,14 @@
 
 html {
   background: var(--background);
-  scroll-padding-top: 5.25rem;
+  scroll-padding-top: 1rem;
 }
 
 body {
   margin: 0;
   color: var(--text);
   background: var(--background);
-  font-family: "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif;
+  font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
   line-height: 1.5;
 }
 
@@ -112,7 +105,7 @@ a {
 }
 
 .shell {
-  width: min(100% - 3rem, 78rem);
+  width: min(100% - 3rem, 88rem);
   margin: 0 auto;
   padding: 2rem 0 2.5rem;
 }
@@ -120,10 +113,10 @@ a {
 .masthead {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 3rem;
+  gap: 4rem;
   align-items: end;
-  padding: 2.5rem 0 2rem;
-  border-bottom: 1px solid var(--line-strong);
+  padding: 2.25rem 0 2rem;
+  border-bottom: 1px solid var(--line);
 }
 
 .eyebrow,
@@ -145,11 +138,10 @@ p {
 h1 {
   max-width: none;
   margin-bottom: 1rem;
-  font-family: "Songti SC", STSong, Georgia, serif;
-  font-size: clamp(2.75rem, 4.6vw, 4.25rem);
-  font-weight: 600;
-  line-height: 1.04;
-  letter-spacing: -0.045em;
+  font-size: clamp(2.5rem, 4vw, 3.75rem);
+  font-weight: 720;
+  line-height: 1.08;
+  letter-spacing: -0.035em;
 }
 
 .lede {
@@ -195,7 +187,7 @@ h1 {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  box-shadow: var(--shadow-soft);
+  box-shadow: 0 0.375rem 1.25rem rgb(28 55 44 / 4%);
 }
 
 .job-form {
@@ -223,7 +215,7 @@ h1 {
   width: 100%;
   padding: 0.75rem;
   color: var(--text);
-  background: #ffffff;
+  background: var(--surface);
   border: 1px solid var(--line-strong);
   border-radius: var(--radius);
   font: inherit;
@@ -413,7 +405,7 @@ h1 {
 }
 
 .role-detail {
-  max-width: 64rem;
+  max-width: 88rem;
 }
 
 .back-link,
@@ -424,14 +416,14 @@ h1 {
 }
 
 .detail-header {
-  max-width: 58rem;
-  padding: 2rem 0;
+  max-width: 64rem;
+  padding: 1.75rem 0 2rem;
   border-bottom: 1px solid var(--line);
 }
 
 .detail-header h1 {
   max-width: none;
-  font-size: clamp(2.25rem, 5vw, 4rem);
+  font-size: clamp(2.25rem, 4vw, 3.5rem);
 }
 
 .detail-header > p:last-child {
@@ -505,10 +497,10 @@ h1 {
 .selection-toolbar {
   position: sticky;
   z-index: 5;
-  top: 0;
+  top: 4.75rem;
   margin-top: 0.75rem;
   padding: 0.75rem;
-  background: rgb(242 238 228 / 94%);
+  background: rgb(246 247 244 / 94%);
   border-top: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
 }
@@ -698,7 +690,7 @@ footer {
 
 .source-panel {
   position: sticky;
-  top: 1rem;
+  top: 5rem;
 }
 
 .source-panel pre {
@@ -793,8 +785,17 @@ footer {
   font-weight: 700;
 }
 
+.requirement-meta span:first-child {
+  padding: 0.2rem 0.45rem;
+  color: var(--accent-dark);
+  background: var(--accent-soft);
+  border-radius: 0.375rem;
+}
+
 .requirement-heading h3 {
-  margin-top: 0.375rem;
+  margin: 0.5rem 0 0;
+  font-size: 1.1rem;
+  line-height: 1.4;
 }
 
 .requirement-list blockquote {
@@ -802,6 +803,7 @@ footer {
   padding-left: 0.75rem;
   color: var(--muted);
   border-left: 3px solid var(--accent);
+  font-size: 0.9375rem;
   line-height: 1.7;
 }
 
@@ -989,13 +991,18 @@ button,
 input,
 select,
 textarea {
-  transition: border-color 140ms ease, background-color 140ms ease, color 140ms ease;
+  transition: border-color 140ms ease, background-color 140ms ease, color 140ms ease,
+    transform 140ms ease;
+}
+
+button:active:not(:disabled) {
+  transform: translateY(1px);
 }
 
 button:focus-visible,
 a:focus-visible,
 summary:focus-visible {
-  outline: 3px solid rgb(189 84 59 / 35%);
+  outline: 3px solid rgb(20 115 84 / 30%);
   outline-offset: 3px;
 }
 
@@ -1033,11 +1040,11 @@ summary:focus-visible {
 .workflow-steps span,
 .section-index {
   margin: 0;
-  color: var(--highlight);
+  color: var(--accent-dark);
   font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
   font-size: 0.6875rem;
   font-weight: 800;
-  letter-spacing: 0.09em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
@@ -1097,12 +1104,12 @@ summary:focus-visible {
 }
 
 .role-list li:hover {
-  background: rgb(255 253 248 / 55%);
+  background: rgb(255 255 255 / 62%);
 }
 
 .role-list h3 {
-  font-family: "Songti SC", STSong, Georgia, serif;
-  font-size: 1.35rem;
+  font-size: 1.2rem;
+  font-weight: 700;
 }
 
 .site-footer {
@@ -1194,8 +1201,8 @@ summary:focus-visible {
 
 .role-workspace {
   display: grid;
-  grid-template-columns: minmax(18rem, 22rem) minmax(0, 1fr);
-  gap: 2.5rem;
+  grid-template-columns: minmax(20rem, 25rem) minmax(0, 1fr);
+  gap: 3rem;
   align-items: start;
   padding-top: 0.5rem;
   border-top: 1px solid var(--line-strong);
@@ -1203,7 +1210,7 @@ summary:focus-visible {
 
 .intake-section {
   position: sticky;
-  top: 1rem;
+  top: 5rem;
   min-width: 0;
   padding-top: 1.25rem;
 }
@@ -1258,15 +1265,17 @@ summary:focus-visible {
 .source-mode label {
   justify-content: center;
   padding: 0.5rem 0.35rem;
-  background: var(--surface-muted);
-  border: 1px solid transparent;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
   font-size: 0.75rem;
   text-align: center;
 }
 
 .source-mode label:has(input:checked) {
-  color: #ffffff;
-  background: var(--accent-dark);
+  color: var(--accent-dark);
+  background: var(--accent-soft);
+  border-color: rgb(20 115 84 / 45%);
 }
 
 .job-section > .list-heading {
@@ -1286,7 +1295,8 @@ summary:focus-visible {
   padding: 0.875rem;
   background: var(--surface);
   border: 1px solid var(--line);
-  border-top: 3px solid var(--accent-dark);
+  border-radius: var(--radius);
+  box-shadow: 0 0.375rem 1.25rem rgb(28 55 44 / 4%);
 }
 
 .job-list-controls .field {
@@ -1336,6 +1346,15 @@ summary:focus-visible {
   padding: 1.125rem 0.25rem;
 }
 
+.job-list > li article {
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--radius);
+}
+
+.job-list > li article:hover {
+  background: rgb(255 255 255 / 62%);
+}
+
 .job-list > li:has(input:checked) {
   margin: 0 -0.75rem;
   padding-right: 0.75rem;
@@ -1376,8 +1395,8 @@ summary:focus-visible {
 
 .job-heading h3 {
   margin-bottom: 0.5rem;
-  font-family: "Songti SC", STSong, Georgia, serif;
-  font-size: 1.3rem;
+  font-size: 1.2rem;
+  font-weight: 700;
 }
 
 .review-header {
@@ -1409,6 +1428,7 @@ summary:focus-visible {
 .metadata-form {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   margin: 1rem 0 0;
+  border-radius: var(--radius);
 }
 
 .metadata-form > span,
@@ -1430,11 +1450,13 @@ summary:focus-visible {
 
 .source-panel pre {
   max-height: calc(100vh - 10rem);
-  border-top: 3px solid var(--accent-dark);
+  border-radius: var(--radius);
+  box-shadow: 0 0.375rem 1.25rem rgb(28 55 44 / 4%);
 }
 
 .analysis-action {
-  border-top: 3px solid var(--accent-dark);
+  border-radius: var(--radius);
+  box-shadow: 0 0.375rem 1.25rem rgb(28 55 44 / 4%);
 }
 
 .analysis-action .section-index {
@@ -1488,8 +1510,13 @@ summary:focus-visible {
   padding: 1.35rem 0.25rem;
 }
 
+.summary-list > li,
+.requirement-list > li {
+  scroll-margin-top: 5.5rem;
+}
+
 .summary-list > li:hover {
-  background: rgb(255 253 248 / 48%);
+  background: rgb(255 255 255 / 62%);
 }
 
 @media (max-width: 64rem) {
@@ -1590,8 +1617,13 @@ summary:focus-visible {
   }
 
   h1 {
-    font-size: clamp(2.3rem, 12vw, 3.25rem);
-    letter-spacing: -0.035em;
+    font-size: clamp(2.15rem, 10vw, 2.65rem);
+    letter-spacing: -0.03em;
+    overflow-wrap: anywhere;
+  }
+
+  .masthead-copy h1 {
+    max-width: 10ch;
   }
 
   .detail-header {
@@ -1599,7 +1631,7 @@ summary:focus-visible {
   }
 
   .detail-header h1 {
-    font-size: clamp(2rem, 10vw, 3rem);
+    font-size: clamp(1.9rem, 9vw, 2.5rem);
   }
 
   .workflow-steps {
@@ -1648,6 +1680,10 @@ summary:focus-visible {
 
   .source-panel {
     position: static;
+  }
+
+  .source-panel pre {
+    max-height: 24rem;
   }
 
   .source-mode {
@@ -1741,6 +1777,11 @@ summary:focus-visible {
     justify-content: flex-start;
   }
 
+  .developer-links a {
+    min-height: 2.75rem;
+    padding: 0.65rem 0;
+  }
+
   .summary-toolbar-actions,
   .summary-heading-actions {
     width: 100%;
@@ -1767,5 +1808,323 @@ summary:focus-visible {
   *::before,
   *::after {
     scroll-behavior: auto !important;
+  }
+}
+
+/* Minimal command workspace */
+
+.home-shell {
+  width: min(100% - 4rem, 76rem);
+  padding-top: 2.75rem;
+}
+
+.direction-page-header h1 {
+  margin: 0;
+  font-size: 1.75rem;
+  font-weight: 720;
+  letter-spacing: -0.025em;
+}
+
+.direction-dashboard {
+  padding: 3rem 0 2rem;
+}
+
+.direction-create,
+.direction-list {
+  scroll-margin-top: 1rem;
+}
+
+.primary-create-button {
+  display: inline-flex;
+  gap: 0.625rem;
+  align-items: center;
+  justify-content: center;
+  min-width: 14rem;
+  min-height: 3.25rem;
+  padding: 0.75rem 1.5rem;
+  color: #ffffff;
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.primary-create-button:hover {
+  background: var(--accent-dark);
+}
+
+.direction-create .role-form {
+  grid-template-columns: minmax(0, 1.25fr) minmax(12rem, 0.75fr);
+  max-width: 56rem;
+  margin-top: 1.25rem;
+  padding: 1.25rem;
+  box-shadow: none;
+}
+
+.direction-create .field-wide {
+  grid-column: 1 / -1;
+}
+
+.direction-create .form-actions {
+  align-items: center;
+  flex-direction: row;
+}
+
+.direction-create .form-actions button {
+  width: auto;
+  min-width: 8rem;
+}
+
+.form-optional {
+  color: var(--muted);
+}
+
+.form-optional summary {
+  width: fit-content;
+  color: var(--accent-dark);
+  font-size: 0.875rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.form-optional label {
+  display: block;
+  margin-top: 1rem;
+}
+
+.form-optional textarea {
+  margin-top: 0.5rem;
+}
+
+.direction-list {
+  margin-top: 4rem;
+}
+
+.direction-list > h2 {
+  margin: 0 0 1.25rem;
+  font-size: 1.5rem;
+  font-weight: 720;
+}
+
+.role-list-columns,
+.role-row {
+  display: grid;
+  grid-template-columns: minmax(15rem, 1.4fr) minmax(10rem, 0.9fr) minmax(8rem, 0.6fr) 1.25rem;
+  gap: 1.5rem;
+  align-items: center;
+}
+
+.role-list-columns {
+  padding: 0 1rem 0.875rem;
+  color: var(--muted);
+  border-bottom: 1px solid var(--line);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.direction-list .role-list {
+  margin: 0;
+  border-top: 0;
+}
+
+.direction-list .role-list li {
+  padding: 0;
+}
+
+.role-row {
+  width: 100%;
+  min-height: 5.5rem;
+  padding: 1.25rem 1rem;
+  border-bottom: 1px solid var(--line);
+  text-decoration: none;
+}
+
+.role-row:hover {
+  background: var(--surface);
+}
+
+.role-row h3,
+.role-row .role-stage,
+.role-row .job-count {
+  margin: 0;
+  padding: 0;
+}
+
+.role-row h3 {
+  font-size: 1.05rem;
+  line-height: 1.4;
+}
+
+.role-row .role-stage {
+  color: var(--text);
+  font-family: inherit;
+  font-weight: 500;
+}
+
+.role-row .job-count {
+  color: var(--text);
+}
+
+.role-row-caret {
+  color: var(--muted);
+}
+
+.direction-list .list-state {
+  margin-top: 0;
+  padding: 2rem 1rem;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+}
+
+.detail-header > p:last-child,
+.section-intro,
+.section-index,
+.review-header > div > p:last-child,
+.section-heading-row > p {
+  display: none;
+}
+
+@media (max-width: 64rem) {
+  .app-sidebar {
+    width: 14.5rem;
+  }
+
+  .app-content {
+    margin-left: 14.5rem;
+  }
+
+  .home-shell {
+    width: min(100% - 3rem, 76rem);
+  }
+}
+
+@media (max-width: 48rem) {
+  html {
+    scroll-padding-top: 5.5rem;
+  }
+
+  .app-sidebar {
+    position: sticky;
+    top: 0;
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .app-content {
+    margin-left: 0;
+  }
+
+  .app-brand {
+    flex: none;
+  }
+
+  .app-brand-mark {
+    width: 2.25rem;
+    height: 2.25rem;
+  }
+
+  .app-brand strong {
+    display: none;
+  }
+
+  .app-navigation {
+    display: flex;
+    gap: 0.25rem;
+    min-width: 0;
+    margin: 0 0 0 auto;
+    overflow-x: auto;
+  }
+
+  .app-navigation a {
+    min-height: 2.5rem;
+    padding: 0.55rem 0.75rem;
+    white-space: nowrap;
+  }
+
+  .home-shell {
+    width: min(100% - 2rem, 76rem);
+    padding-top: 1.75rem;
+  }
+
+  .direction-dashboard {
+    padding-top: 2rem;
+  }
+
+  .direction-create .role-form {
+    grid-template-columns: 1fr;
+  }
+
+  .direction-list {
+    margin-top: 3rem;
+  }
+
+  .role-list-columns {
+    display: none;
+  }
+
+  .role-row {
+    grid-template-columns: 1fr auto 1.25rem;
+    gap: 0.5rem 1rem;
+    min-height: 5rem;
+    padding: 1rem 0;
+  }
+
+  .role-row h3 {
+    grid-column: 1 / -1;
+  }
+
+  .role-row-caret {
+    grid-column: 3;
+  }
+}
+
+@media (max-width: 28rem) {
+  .app-sidebar {
+    gap: 0.5rem;
+  }
+
+  .app-navigation {
+    gap: 0;
+    overflow: visible;
+  }
+
+  .app-navigation svg {
+    display: none;
+  }
+
+  .app-navigation a {
+    padding-inline: 0.4rem;
+    font-size: 0.75rem;
+  }
+
+  .primary-create-button {
+    width: 100%;
+  }
+
+  .direction-create .form-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .direction-create .form-actions button {
+    width: 100%;
+  }
+
+  .page-nav {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+
+  .page-nav > span {
+    text-align: left;
   }
 }
